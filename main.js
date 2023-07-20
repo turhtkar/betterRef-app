@@ -11,7 +11,9 @@ function createWindow () {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      enableRemoteModule: true  // to enable use of remote module in renderer process
+      enableRemoteModule: true,  // to enable use of remote module in renderer process
+      webSecurity: true, // Set webSecurity to true to enforce security policies
+      contentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self';" // Set strict CSP
     }
   })
 

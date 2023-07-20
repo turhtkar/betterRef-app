@@ -72,7 +72,7 @@ window.onload = function() {
                     listeners: { move: resizeMoveListener },
                     modifiers: [
                         interact.modifiers.restrictEdges({
-                            // outer: 'parent',
+                            outer: 'parent',
                             endOnly: true,
                         }),
                         interact.modifiers.restrictSize({
@@ -132,12 +132,12 @@ function resizeCanvas(event) {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     console.log(lastPos);
     contStyle = document.getElementById('grid-snap').style;
-    // var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
-    // var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
+    var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
+    var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
     var draggableItems = document.querySelectorAll('.draggable');
-    if(lastPos.left>0) {
+     if(lastPos.left>0) {
         pos.left += lastPos.left;
-        contStyle.width = ((boundRect.width + lastPos.left) + 'px');       
+        // event.target.style.transform = 'translate(' + boundRect.x + 'px ' + ', ' + y + 'px)';   
     }
     if (lastPos.right>0) {
         pos.right += lastPos.right;
@@ -145,31 +145,31 @@ function resizeCanvas(event) {
     }
     if (lastPos.top>0) {
         pos.top += lastPos.top;
-        contStyle.height = ((boundRect.height + lastPos.top) + 'px');
+        // event.target.style.transform = 'translate(' + x + 'px ' + ', ' + boundRect.y + 'px)';
     }
     if (lastPos.bottom>0) {
         pos.bottom += lastPos.bottom;
         contStyle.height = ((boundRect.height + lastPos.bottom) + 'px');
     }
-    for(let i = 0; i<draggableItems.length; i++ ) {
-        var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
-        var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
-        var itemId = draggableItems[i].getAttribute('id');
-        console.log("hi");
-        if(!(event.target.getAttribute('id') === itemId)) {
-            draggableItems[i].style.left = (lastPos.left>0) ? ((pos.left/2) + 'px') : console.log("not left");
-            // draggableItems[i].style.left = (lastPos.right>0) ? ((pos.right/2) + 'px') : console.log("not right");
-            draggableItems[i].style.top = (lastPos.top>0) ? ((pos.top/2) + 'px') : console.log("not top");
-            // draggableItems[i].style.top = (lastPos.bottom>0) ? ((pos.bottom/2) + 'px') : console.log("not bottom");
-        }else {
-            event.target.style.left = (lastPos.left>0) ? ((pos.left) + 'px') : console.log("event not left");
-            // event.target.style.left = (lastPos.right>0) ? ((pos.right) + 'px') : console.log("event not right");
-            event.target.style.top = (lastPos.top>0) ? ((pos.top) + 'px') : console.log("event not top");
-            // event.target.style.top = (lastPos.bottom>0) ? ((pos.bottom) + 'px') : console.log("event not bottom");
-        }
-    }
-    max.x = 0;
-    last = 0;
+    // for(let i = 0; i<draggableItems.length; i++ ) {
+    //     var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
+    //     var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
+    //     var itemId = draggableItems[i].getAttribute('id');
+    //     console.log("hi");
+    //     if(!(event.target.getAttribute('id') === itemId)) {
+    //         draggableItems[i].style.left = (lastPos.left>0) ? ((pos.left/2) + 'px') : console.log("not left");
+    //         // draggableItems[i].style.left = (lastPos.right>0) ? ((pos.right/2) + 'px') : console.log("not right");
+    //         draggableItems[i].style.top = (lastPos.top>0) ? ((pos.top/2) + 'px') : console.log("not top");
+    //         // draggableItems[i].style.top = (lastPos.bottom>0) ? ((pos.bottom/2) + 'px') : console.log("not bottom");
+    //     }else {
+    //         event.target.style.left = (lastPos.left>0) ? ((pos.left) + 'px') : console.log("event not left");
+    //         // event.target.style.left = (lastPos.right>0) ? ((pos.right) + 'px') : console.log("event not right");
+    //         event.target.style.top = (lastPos.top>0) ? ((pos.top) + 'px') : console.log("event not top");
+    //         // event.target.style.top = (lastPos.bottom>0) ? ((pos.bottom) + 'px') : console.log("event not bottom");
+    //     }
+    // }
+    // max.x = 0;
+    // last = 0;
     console.log('\n\n\nfinished resize\n\n\n');
     console.log('last pos top');
     console.log(lastPos.top);
