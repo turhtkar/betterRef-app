@@ -7,9 +7,6 @@ let body = document.body;
 let scale = 1; // initial scale factor
 let zIndex = 0;
 let load = 0;
-let max = {x: 0, y: 0};
-let maxDistance = {left: 0, top: 0, right: 0, bottom: 0};
-let last = 0;
 let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
 let pos = {left: 0, top: 0, right: 0, bottom: 0};
 
@@ -39,6 +36,7 @@ window.onload = function() {
                 video.loop = true;
                 video.muted = true;
                 video.className = 'draggable';
+                video.style.top = ' 0 px';
                 video.style.objectFit = 'fill';
                 refGrid.appendChild(video);
             }
@@ -47,6 +45,7 @@ window.onload = function() {
                 let img = document.createElement("img");
                 img.src = f.path;
                 img.className = "draggable";
+                img.style.top = '0 px';
                 refGrid.appendChild(img);
 
             }
@@ -97,7 +96,6 @@ function dragMoveListener(event) {
     target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
     target.setAttribute('data-x', x);
     target.setAttribute('data-y', y);
-    // getOutOfBoundTravel(event);
 }
 
 function endDragListener(event) {
@@ -111,70 +109,40 @@ function endDragListener(event) {
             .toFixed(2) + 'px');
 }
 function getOutOfBoundTravel(event) {
-    boundRect = document.getElementById('grid-snap').getBoundingClientRect();
-    targetRect = event.target.getBoundingClientRect();
+    var boundRect = document.getElementById('grid-snap').getBoundingClientRect();
+    var targetRect = event.target.getBoundingClientRect();
 
     lastPos.left = (boundRect.x-targetRect.x);
     lastPos.right = (targetRect.right-boundRect.right);
     lastPos.top = (boundRect.top-targetRect.top);
     lastPos.bottom = (targetRect.bottom-boundRect.bottom);
-    console.log(targetRect);
-    
-
-    // if(lastPos.left>0 || lastPos.right>0 || lastPos.top>0 || lastPos.bottom>0) {
-    //     var distance = (boundRect.x-targetRect.x);
-    //     if(maxDistance.left < lastPos.left) {
-    //         maxDistance.left = lastPos.left;
-    //     }
-    // }
 }
+
 function resizeCanvas(event) {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
-    console.log(lastPos);
     contStyle = document.getElementById('grid-snap').style;
-    var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
-    var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
-    var draggableItems = document.querySelectorAll('.draggable');
      if(lastPos.left>0) {
-        pos.left += lastPos.left;
-        // event.target.style.transform = 'translate(' + boundRect.x + 'px ' + ', ' + y + 'px)';   
+        if(!event.target.style.left) {
+            event.target.style.left = '0px';
+        }
+        var left =  parseFloat(event.target.style.left) + lastPos.left;
+        event.target.style.left = left+ 'px';  
     }
     if (lastPos.right>0) {
         pos.right += lastPos.right;
         contStyle.width = ((boundRect.width + lastPos.right) + 'px');
     }
     if (lastPos.top>0) {
-        pos.top += lastPos.top;
-        // event.target.style.transform = 'translate(' + x + 'px ' + ', ' + boundRect.y + 'px)';
+        if(!event.target.style.top) {
+            event.target.style.top = '0px';
+        }
+        var top =  parseFloat(event.target.style.top) + lastPos.top;
+        event.target.style.top = top+ 'px';
     }
     if (lastPos.bottom>0) {
         pos.bottom += lastPos.bottom;
         contStyle.height = ((boundRect.height + lastPos.bottom) + 'px');
     }
-    // for(let i = 0; i<draggableItems.length; i++ ) {
-    //     var x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.dx;
-    //     var y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.dy;
-    //     var itemId = draggableItems[i].getAttribute('id');
-    //     console.log("hi");
-    //     if(!(event.target.getAttribute('id') === itemId)) {
-    //         draggableItems[i].style.left = (lastPos.left>0) ? ((pos.left/2) + 'px') : console.log("not left");
-    //         // draggableItems[i].style.left = (lastPos.right>0) ? ((pos.right/2) + 'px') : console.log("not right");
-    //         draggableItems[i].style.top = (lastPos.top>0) ? ((pos.top/2) + 'px') : console.log("not top");
-    //         // draggableItems[i].style.top = (lastPos.bottom>0) ? ((pos.bottom/2) + 'px') : console.log("not bottom");
-    //     }else {
-    //         event.target.style.left = (lastPos.left>0) ? ((pos.left) + 'px') : console.log("event not left");
-    //         // event.target.style.left = (lastPos.right>0) ? ((pos.right) + 'px') : console.log("event not right");
-    //         event.target.style.top = (lastPos.top>0) ? ((pos.top) + 'px') : console.log("event not top");
-    //         // event.target.style.top = (lastPos.bottom>0) ? ((pos.bottom) + 'px') : console.log("event not bottom");
-    //     }
-    // }
-    // max.x = 0;
-    // last = 0;
-    console.log('\n\n\nfinished resize\n\n\n');
-    console.log('last pos top');
-    console.log(lastPos.top);
-    console.log('\n the pos of the event is ');
-    console.log(event.target.getBoundingClientRect());
     lastPos.bottom = 0;
     lastPos.left = 0;
     lastPos.right = 0;
@@ -190,7 +158,6 @@ function resizeMoveListener(event) {
         for(let i = 0; i<draggableItems.length; i++ ) {
             draggableItems[i].style.position = "absolute";
             draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
-            
         }
         load++;
     }
@@ -200,6 +167,7 @@ function resizeMoveListener(event) {
 
     target.style.width = rect.width + 'px';
     target.style.height = rect.height + 'px';
+    target.style.top = "0px";
 
     x += event.deltaRect.left;
     y += event.deltaRect.top;
@@ -283,13 +251,6 @@ window.addEventListener('wheel', (event) => {
   });
 
 
-// function updateBoxShadow() {
-//     const padding = window.getComputedStyle(document.documentElement, null).getPropertyValue('padding');
-//     document.body.style.boxShadow = '0 0 0 ' + padding + ' #FF7A59';
-//     console.log(padding);
-// }
-
-
   // Create a new draggable text box
 function createNewNote() {
     // const textbox = document.createElement('div');
@@ -307,7 +268,7 @@ function createNewNote() {
         inertia: true,
         modifiers: [
             interact.modifiers.restrictRect({
-            restriction: 'body',
+            restriction: 'parent',
             endOnly: true
             })
         ],
@@ -321,7 +282,7 @@ function createNewNote() {
         listeners: { move: resizeMoveListener },
         modifiers: [
             interact.modifiers.restrictEdges({
-                outer: 'body',
+                outer: 'parent',
                 endOnly: true,
             }),
             interact.modifiers.restrictSize({
