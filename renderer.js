@@ -68,7 +68,7 @@ window.onload = function() {
                     edges: { left: true, right: true, bottom: true, top: true },
                     // preserveAspectRatio: false,
                     margin: 10,
-                    listeners: { move: resizeMoveListener },
+                    listeners: { move: resizeMoveListener, end: endResizeListener },
                     modifiers: [
                         interact.modifiers.restrictEdges({
                             outer: 'parent',
@@ -93,14 +93,19 @@ function dragMoveListener(event) {
     event.target.style.zIndex = 1000;
     var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
     var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-    target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
-    target.setAttribute('data-x', x);
-    target.setAttribute('data-y', y);
+    console.log(x);
+    console.log(y);
+    if(y>0 && x>0){
+        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+        target.setAttribute('data-x', x);
+        target.setAttribute('data-y', y);
+
+    }
 }
 
 function endDragListener(event) {
     getOutOfBoundTravel(event);
-    resizeCanvas(event);
+    resizeCanvas();
     var textEl = event.target.querySelector('p');
     event.target.style.zIndex = zIndex++;
     textEl && (textEl.textContent = 'moved a distance of ' +
@@ -108,6 +113,11 @@ function endDragListener(event) {
             Math.pow(event.pageY - event.y0, 2) | 0))
             .toFixed(2) + 'px');
 }
+function endResizeListener(event) {
+    getOutOfBoundTravel(event);
+    resizeCanvas();
+}
+
 function getOutOfBoundTravel(event) {
     var boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     var targetRect = event.target.getBoundingClientRect();
@@ -118,35 +128,19 @@ function getOutOfBoundTravel(event) {
     lastPos.bottom = (targetRect.bottom-boundRect.bottom);
 }
 
-function resizeCanvas(event) {
+function resizeCanvas() {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     contStyle = document.getElementById('grid-snap').style;
-     if(lastPos.left>0) {
-        if(!event.target.style.left) {
-            event.target.style.left = '0px';
-        }
-        var left =  parseFloat(event.target.style.left) + lastPos.left;
-        event.target.style.left = left+ 'px';  
-    }
     if (lastPos.right>0) {
         pos.right += lastPos.right;
         contStyle.width = ((boundRect.width + lastPos.right) + 'px');
-    }
-    if (lastPos.top>0) {
-        if(!event.target.style.top) {
-            event.target.style.top = '0px';
-        }
-        var top =  parseFloat(event.target.style.top) + lastPos.top;
-        event.target.style.top = top+ 'px';
     }
     if (lastPos.bottom>0) {
         pos.bottom += lastPos.bottom;
         contStyle.height = ((boundRect.height + lastPos.bottom) + 'px');
     }
     lastPos.bottom = 0;
-    lastPos.left = 0;
     lastPos.right = 0;
-    lastPos.top = 0;
 }
 
 function resizeMoveListener(event) {
