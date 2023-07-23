@@ -37,16 +37,21 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
     /* margin: 10%; */
 }
 html {
     background-color: #202020;
     width: -webkit-fill-available;   /* viewport width */
     height: -webkit-fill-available;  /* viewport height */
-}
-html, body {
     overflow: hidden;
 }
+html, body {
+    /* overflow: hidden; */
+}
+/* html::-webkit-scrollbar {
+    width: 0px; 
+} */
 .textbox {
     position: absolute;
     overflow: hidden;
@@ -84,5 +89,6 @@ textarea {
     position: absolute;
     background-color: #2a2a2a;
     touch-action: none;
-    /* transform: translate(0px, 0px) scale(0.5); */
+    transition: width 0.05s ease, height 0.05s ease;
+    transform: scale(1);
   }

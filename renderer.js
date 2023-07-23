@@ -1,10 +1,20 @@
 const interact = require('interactjs');
 const { ipcRenderer } = require('electron');
 const { webFrame } = require('electron');
+
 // Get the body element
 let body = document.body;
 
-let scale = 1; // initial scale factor
+let zoomFactor = 1; // Keep track of the zoom level
+let scale = 1;
+let offsetX = 0;
+let offsetY = 0;
+var newMouseX = 0;
+var newMouseY = 0;
+var lastTransform = {left: 0, top: 0};
+var pointX = 0, pointY = 0;
+const lastZoomPoint = {left: 0, top: 0};
+
 let zIndex = 0;
 let load = 0;
 let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
@@ -91,11 +101,18 @@ window.onload = function() {
 function dragMoveListener(event) {
     var target = event.target;
     event.target.style.zIndex = 1000;
+    if(load===0) {
+        var positions = savePositions();
+        var draggableItems = document.querySelectorAll('.draggable');
+        for(let i = 0; i<draggableItems.length; i++ ) {
+            draggableItems[i].style.position = "absolute";
+            draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
+        }
+        load++;
+    }
     var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
     var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-    console.log(x);
-    console.log(y);
-    if(y>0 && x>0){
+    if(y>=0 && x>=0){
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
@@ -171,28 +188,42 @@ function resizeMoveListener(event) {
     target.setAttribute('data-y', y);
 }
 
-// window.onresize = function() {
-//     setTimeout(function() {
-//         let draggableItems = document.querySelectorAll('.draggable');
-//         draggableItems.forEach(function(item) {
-//             let x = parseFloat(item.getAttribute('data-x'));
-//             let y = parseFloat(item.getAttribute('data-y'));
+interact('.draggable').on('tap', function (event) {
+    let target = event.currentTarget;
+    // Hide the bounding box for any previous selected element
+    let previousSelected = document.querySelector('.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
 
-//             if (x > window.innerWidth - item.offsetWidth) {
-//                 x = window.innerWidth - item.offsetWidth;
-//                 item.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
-//                 item.setAttribute('data-x', x);
-//             }
+    // Show the bounding box for the new selected element
+    target.classList.add('selected');
+    updateBoundingBox(target);
+    event.preventDefault();
+});
 
-//             if (y > window.innerHeight - item.offsetHeight) {
-//                 y = window.innerHeight - item.offsetHeight;
-//                 item.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
-//                 item.setAttribute('data-y', y);
-//             }
-//         });
-//     }, 100);
+interact('body').on('click', function(event) {
+    // if the clicked element is not an image, hide the bounding box
+    if (event.target.className !== 'draggable') {
+        let previousSelected = document.querySelector('.selected');
+        if (previousSelected) {
+            previousSelected.classList.remove('selected');
+            let boundingBox = document.getElementById('boundingBox');
+            boundingBox.style.display = 'none';
+        }
+    }
+});
 
-// }
+function updateBoundingBox(element) {
+    let boundingBox = document.getElementById('boundingBox');
+    let rect = element.getBoundingClientRect();
+
+    boundingBox.style.width = rect.width + 'px';
+    boundingBox.style.height = rect.height + 'px';
+    boundingBox.style.left = rect.left + 'px';
+    boundingBox.style.top = rect.top + 'px';
+    boundingBox.style.display = 'block';
+}
 
 function savePositions() {
     let positions = [];
@@ -219,30 +250,6 @@ function savePositions() {
     console.log(positions);
     return positions;
 }
-
-// Add the 'wheel' event listener
-window.addEventListener('wheel', (event) => {
-    if (event.ctrlKey) {
-      event.preventDefault(); // Prevent the default scroll behavior
-  
-      const zoomIncrement = 0.1; // Adjust the zoom increment as needed
-    //   let padding = ((window.innerHeight / 100)*10);
-      let padding = window.getComputedStyle(document.documentElement, null).getPropertyValue('padding');
-
-  
-        if (event.deltaY < 0) {
-            // Zoom in
-            webFrame.setZoomFactor(webFrame.getZoomFactor() + zoomIncrement);
-            // document.documentElement.style["boxShadow"] = '0 0 0 ' + padding + 'px #FF7A59';
-            // document.documentElement.style["boxShadow"] = '0 0 0 20px #FF7A59';
-        } else {
-            // Zoom out
-            webFrame.setZoomFactor(webFrame.getZoomFactor() - zoomIncrement);
-            // document.documentElement.style["boxShadow"] = '0 0 0 ' + padding + 'px #FF7A59';
-        }
-    }
-    // setTimeout(updateBoxShadow(), 500);
-  });
 
 
   // Create a new draggable text box
@@ -285,7 +292,158 @@ function createNewNote() {
         ],
         inertia: true,
     });
-  }
+}
   
-  // Listen for the 'create-new-note' event
-  ipcRenderer.on('create-new-note', createNewNote);
+// Listen for the 'create-new-note' event
+ipcRenderer.on('create-new-note', createNewNote);
+
+
+window.addEventListener('mouseup', function(e) {
+    if(e.button === 1) { // Middle mouse button
+        isPanning = false;
+    }
+});
+
+// panning tool
+let isPanning = false;
+let start = { x: 0, y: 0 };
+let scrollPos = { x: 0, y: 0 };
+
+window.addEventListener('mousedown', function(e) {
+    if(e.button === 1) { // Middle mouse button
+        isPanning = true;
+        start = { x: e.clientX - pointX, y: e.clientY - pointY };
+        // scrollPos = { x: window.scrollX, y: window.scrollY };
+    }
+});
+
+window.addEventListener('mousemove', function(e) {
+    if(isPanning) {
+        const dx = e.clientX - start.x;
+        const dy = e.clientY - start.y;
+        pointX = dx;
+        pointY = dy;
+        // window.scrollTo(scrollPos.x - dx, scrollPos.y - dy);
+        setTransform();
+    }
+});
+
+window.addEventListener('mouseup', function(e) {
+    if(e.button === 1) { // Middle mouse button
+        isPanning = false;
+    }
+});
+
+function setTransform() {
+    document.documentElement.style.transform = "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
+    savePositions();
+  }
+
+// window.onmousedown = function(e) {
+//     e.preventDefault();
+//     start = {x: e.clientX - pointX, y: e.clientY-pointY};
+//     panning = true;
+// }
+
+window.addEventListener('wheel', (event)=> {
+    event.preventDefault();
+    console.log('the point of the mouse before is - '+ event.clientX + ', ' + event.clientY);
+    //lastZoomPoint = {left: event.clientX, top: event.clientY};
+    if(scale===1) {
+        lastZoomPoint.left = event.clientX;
+        lastZoomPoint.top = event.clientY;
+    }
+    var cont = document.getElementById('grid-snap')
+    const lastPositions = savePositions();
+    const mouseX = event.clientX - cont.offsetLeft;
+    const mouseY = event.clientY - cont.offsetTop;
+    // console.log('\n\n this is the offset top')
+    // console.log(cont.offsetTop);
+    // console.log('\n\n this is the mouseY')
+    // console.log(mouseY);
+
+    
+    // Apply the new scale while keeping the mouse position fixed
+    if(scale!==1) {
+        // lastZoomPoint.left = event.clientX;
+        // lastZoomPoint.top = event.clientY;
+    //     if(event.deltaY < 0) {
+    //         if(!(event.clientX === lastZoomPoint.left)) {
+    //             console.log('error \n\n');
+    //             newMouseX = mouseX*1.24;
+    //         }
+    //         if(!(event.clientY === lastZoomPoint.top)) {
+    //             newMouseY = mouseY*1.24;
+    //         }
+    //     }else {
+    //         if(!(event.clientX === lastZoomPoint.left)) {
+    //             newMouseX = mouseX/1.24;
+    //         }
+    //         if(!(event.clientY === lastZoomPoint.top)) {
+    //             newMouseY = mouseY/1.24;
+    //         }
+    //     }
+    //     if((event.clientX === lastZoomPoint.left) && (event.clientY === lastZoomPoint.top)) {
+    //         cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+    //     }else {
+    //         cont.style.transformOrigin = `${newMouseX}px ${newMouseY}px`;
+    //         lastZoomPoint.left = event.clientX;
+    //         lastZoomPoint.top = event.clientY;
+    //     }
+    // }else {
+        //     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+    }
+    if(!(event.clientX === lastZoomPoint.left)) {
+        var distanceX = (event.clientX-lastZoomPoint.left);
+    }
+    if(!(event.clientY === lastZoomPoint.top)) {
+        var distanceY = (event.clientY-lastZoomPoint.top);
+    }
+    if((event.clientX !== lastZoomPoint.left) || (event.clientY !== lastZoomPoint.top)) {
+        // cont.style.transformOrigin = `${(lastTransform.left+distanceX)}px ${mouseY}px`;
+        console.log('this is The distance in x, y\n' + distanceX + ', ' + distanceY);
+        lastZoomPoint.left = event.clientX;
+        lastZoomPoint.top = event.clientY;
+    }
+
+    // Calculate the new scale
+    if (event.deltaY < 0) {
+      // Zoom in
+      scale *= 1.24;
+    } else {
+      // Zoom out
+      scale /= 1.24;
+    }
+
+    cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+    cont.style.transform = `scale(${scale})`;
+    lastTransform.left = mouseX;
+    lastTransform.top = mouseY;
+    savePositions();
+    console.log('the point of the mouse after is - '+ event.clientX + ', ' + event.clientY);
+    // if(e.ctrlKey) {
+    // }
+});
+
+// Add the 'wheel' event listener
+// window.addEventListener('wheel', (event) => {
+//     if (event.ctrlKey) {
+//         event.preventDefault(); // Prevent the default scroll behavior
+//         const scaleFactor = 1.24; // Based on measures
+//         const mouseXPercentage = event.clientX / window.innerWidth;
+//         const mouseYPercentage = event.clientY / window.innerHeight;
+    
+//         // Determine if we are zooming in or out
+//         if (event.deltaY < 0) {
+//             scale *= scaleFactor;
+//             originX = mouseXPercentage * 100;
+//             originY = mouseYPercentage * 100;
+//         } else {
+//             scale /= scaleFactor;
+//         }
+    
+//         // Apply the transformations
+//         document.documentElement.style.transformOrigin = `${originX}% ${originY}%`;
+//         document.documentElement.style.transform = `scale(${scale})`;
+//     }
+// });
