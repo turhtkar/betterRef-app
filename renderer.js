@@ -1,6 +1,7 @@
 const interact = require('interactjs');
 const { ipcRenderer } = require('electron');
 const { webFrame } = require('electron');
+var selectedElement = 0;
 
 // Get the body element
 let body = document.body;
@@ -11,6 +12,7 @@ let offsetX = 0;
 let offsetY = 0;
 var newMouseX = 0;
 var newMouseY = 0;
+var closeButton = 0;
 var lastTransform = {left: 0, top: 0};
 var pointX = 0, pointY = 0;
 const lastZoomPoint = {left: 0, top: 0};
@@ -23,6 +25,7 @@ let pos = {left: 0, top: 0, right: 0, bottom: 0};
 
 //Drag and drop img files into the application window to use them
 window.onload = function() {
+
     let dropZone = document.getElementById('drop_zone');
 
     dropZone.ondragover = (event) => {
@@ -37,6 +40,25 @@ window.onload = function() {
         document.body.appendChild(refGrid);
 
         for (let f of event.dataTransfer.files) {
+        // Create container for each element
+        let container = document.createElement('div');
+        container.className = 'draggable container';
+        container.style.position = 'relative';
+        container.style.overflow = 'hidden';
+
+        // Create close button
+        let closeButton = document.createElement('button');
+        closeButton.className = 'close-button';
+        closeButton.textContent = String.fromCodePoint(0x1F534);
+        closeButton.style.display = 'none';
+
+        // Add an event listener to handle the close button click
+        closeButton.addEventListener('click', function () {
+            container.remove(); // Remove the whole container when the button is clicked
+        });
+        // Append the close button to the container
+        container.appendChild(closeButton);
+
             if (f.type.startsWith('video/')) {
                 console.log('video');
                 let video = document.createElement('video');
@@ -45,20 +67,26 @@ window.onload = function() {
                 video.autoplay = true;
                 video.loop = true;
                 video.muted = true;
-                video.className = 'draggable';
+                // video.className = 'draggable';
                 video.style.top = ' 0 px';
                 video.style.objectFit = 'fill';
-                refGrid.appendChild(video);
+                video.style.width = '100%';
+                video.style.height = '100%';
+                container.appendChild(video);// Append the video to it's container
             }
             else if (f.type.startsWith('image/')) {
                 console.log('File(s) you dragged here: ', f.path);
                 let img = document.createElement("img");
                 img.src = f.path;
-                img.className = "draggable";
+                // img.className = "draggable";
                 img.style.top = '0 px';
-                refGrid.appendChild(img);
+                img.style.width = '100%';
+                img.style.height = '100%';
+                container.appendChild(img);
 
             }
+            // Append the container to the grid-snap
+            refGrid.appendChild(container);
 
             // make the new image draggable and resizable
             interact('.draggable')
@@ -90,13 +118,34 @@ window.onload = function() {
                     ],
                     inertia: true,
                 });
-        }
+                container.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    hideAllCloseButtons();
+                    let closeButton = this.querySelector('.close-button');
+                    if (closeButton) {
+                        closeButton.style.display = 'block';
+                    }
+                });
+            }
 
         // Hide the drop zone
         dropZone.style.display = 'none';
         return false;
     };
 }
+
+// hide close button when click anywhere else on the document
+document.addEventListener('click', function(event) {
+    hideAllCloseButtons();
+});
+
+function hideAllCloseButtons() {
+    let closeButtons = document.querySelectorAll('.close-button');
+    closeButtons.forEach(function(button) {
+        button.style.display = 'none';
+    });
+}
+
 
 function dragMoveListener(event) {
     var target = event.target;
@@ -252,178 +301,229 @@ function savePositions() {
 }
 
 
-  // Create a new draggable text box
+// JavaScript
+// Create a new draggable text box
 function createNewNote() {
-    // const textbox = document.createElement('div');
-    // textbox.className = 'draggable textboxContainer';
+    const textbox = document.createElement('div');
+    textbox.className = 'draggable textboxContainer';
+    textbox.style.overflow = 'revert';
+    textbox.style.position = 'absolute';
+    
     const textarea = document.createElement('textarea');
-    textarea.className = 'draggable textbox';
+    textarea.className = 'textbox';
+    
     const closeButton = document.createElement('button');
     closeButton.className = 'close-button';
-    closeButton.textContent = 'x';
-    textarea.appendChild(closeButton);
-    document.getElementById('grid-snap').appendChild(textarea);
-    // Make the new text box draggable
+    closeButton.textContent = String.fromCodePoint(0x1F534);
+    closeButton.style.display = 'none'; // initially, the close button is hidden
+    
+    closeButton.addEventListener('click', function (event) {
+        event.stopPropagation(); // prevent the container click event from firing
+        textbox.remove();
+    });
+  
+    textbox.appendChild(closeButton);
+    textbox.appendChild(textarea);
+    
+    document.getElementById('grid-snap').appendChild(textbox);
+
+    textbox.addEventListener('click', function(event) {
+        event.stopPropagation(); // prevent the document click event from firing
+        hideAllCloseButtons();
+        let closeButton = this.querySelector('.close-button');
+        if (closeButton) {
+            closeButton.style.display = 'block';
+        }
+    });
+
     interact('.draggable')
-      .draggable({
-        inertia: true,
-        modifiers: [
-            interact.modifiers.restrictRect({
-            restriction: 'parent',
-            endOnly: true
-            })
-        ],
-        autoScroll: true,
-        listeners: { move: dragMoveListener, end: endDragListener }
-      })
-      .resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        // preserveAspectRatio: false,
-        margin: 10,
-        listeners: { move: resizeMoveListener },
-        modifiers: [
-            interact.modifiers.restrictEdges({
-                outer: 'parent',
-                endOnly: true,
-            }),
-            interact.modifiers.restrictSize({
-                min: { width: 50, height: 50 },
-            }),
-        ],
-        inertia: true,
+        .draggable({
+            inertia: true,
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                    endOnly: true
+                })
+            ],
+            autoScroll: true,
+            listeners: { move: dragMoveListener, end: endDragListener }
+        })
+        .resizable({
+            edges: { left: true, right: true, bottom: true, top: true },
+            margin: 10,
+            listeners: { move: resizeMoveListener },
+            modifiers: [
+                interact.modifiers.restrictEdges({
+                    outer: 'parent',
+                    endOnly: true,
+                }),
+                interact.modifiers.restrictSize({
+                    min: { width: 50, height: 50 },
+                }),
+            ],
+            inertia: true,
+        });
+}
+
+document.addEventListener('click', function(event) {
+    hideAllCloseButtons();
+});
+
+function hideAllCloseButtons() {
+    let closeButtons = document.querySelectorAll('.close-button');
+    closeButtons.forEach(function(button) {
+        button.style.display = 'none';
     });
 }
+
   
 // Listen for the 'create-new-note' event
 ipcRenderer.on('create-new-note', createNewNote);
 
+// const closeButton = document.querySelector('.close-button');
+// noteContainer.textarea.addEventListener('focusin', function() {
+//     noteContainer.firstChild.style.display('block');
+// });
 
-window.addEventListener('mouseup', function(e) {
-    if(e.button === 1) { // Middle mouse button
-        isPanning = false;
-    }
-});
+// noteContainer.textarea.addEventListener('focusout', function() {
+//     noteContainer.firstChild.style.display('none');
+// });
 
-// panning tool
-let isPanning = false;
-let start = { x: 0, y: 0 };
-let scrollPos = { x: 0, y: 0 };
 
-window.addEventListener('mousedown', function(e) {
-    if(e.button === 1) { // Middle mouse button
-        isPanning = true;
-        start = { x: e.clientX - pointX, y: e.clientY - pointY };
-        // scrollPos = { x: window.scrollX, y: window.scrollY };
-    }
-});
+// document.addEventListener('click', (event) => {
+//     var target = event.target;
+//     console.log('this is ' + target);
+//     // target.style.transform = 'scale(4)';
+//     // selectedElement = target;
+// });
 
-window.addEventListener('mousemove', function(e) {
-    if(isPanning) {
-        const dx = e.clientX - start.x;
-        const dy = e.clientY - start.y;
-        pointX = dx;
-        pointY = dy;
-        // window.scrollTo(scrollPos.x - dx, scrollPos.y - dy);
-        setTransform();
-    }
-});
 
-window.addEventListener('mouseup', function(e) {
-    if(e.button === 1) { // Middle mouse button
-        isPanning = false;
-    }
-});
+// window.addEventListener('mouseup', function(e) {
+//     if(e.button === 1) { // Middle mouse button
+//         isPanning = false;
+//     }
+// });
 
-function setTransform() {
-    document.documentElement.style.transform = "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
-    savePositions();
-  }
+// // panning tool
+// let isPanning = false;
+// let start = { x: 0, y: 0 };
+// let scrollPos = { x: 0, y: 0 };
 
-// window.onmousedown = function(e) {
-//     e.preventDefault();
-//     start = {x: e.clientX - pointX, y: e.clientY-pointY};
-//     panning = true;
-// }
+// window.addEventListener('mousedown', function(e) {
+//     if(e.button === 1) { // Middle mouse button
+//         isPanning = true;
+//         start = { x: e.clientX - pointX, y: e.clientY - pointY };
+//         // scrollPos = { x: window.scrollX, y: window.scrollY };
+//     }
+// });
 
-window.addEventListener('wheel', (event)=> {
-    event.preventDefault();
-    console.log('the point of the mouse before is - '+ event.clientX + ', ' + event.clientY);
-    //lastZoomPoint = {left: event.clientX, top: event.clientY};
-    if(scale===1) {
-        lastZoomPoint.left = event.clientX;
-        lastZoomPoint.top = event.clientY;
-    }
-    var cont = document.getElementById('grid-snap')
-    const lastPositions = savePositions();
-    const mouseX = event.clientX - cont.offsetLeft;
-    const mouseY = event.clientY - cont.offsetTop;
-    // console.log('\n\n this is the offset top')
-    // console.log(cont.offsetTop);
-    // console.log('\n\n this is the mouseY')
-    // console.log(mouseY);
+// window.addEventListener('mousemove', function(e) {
+//     if(isPanning) {
+//         const dx = e.clientX - start.x;
+//         const dy = e.clientY - start.y;
+//         pointX = dx;
+//         pointY = dy;
+//         // window.scrollTo(scrollPos.x - dx, scrollPos.y - dy);
+//         setTransform();
+//     }
+// });
+
+// window.addEventListener('mouseup', function(e) {
+//     if(e.button === 1) { // Middle mouse button
+//         isPanning = false;
+//     }
+// });
+
+// function setTransform() {
+//     document.documentElement.style.transform = "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
+//     savePositions();
+//   }
+
+// // window.onmousedown = function(e) {
+// //     e.preventDefault();
+// //     start = {x: e.clientX - pointX, y: e.clientY-pointY};
+// //     panning = true;
+// // }
+
+// window.addEventListener('wheel', (event)=> {
+//     event.preventDefault();
+//     console.log('the point of the mouse before is - '+ event.clientX + ', ' + event.clientY);
+//     //lastZoomPoint = {left: event.clientX, top: event.clientY};
+//     if(scale===1) {
+//         lastZoomPoint.left = event.clientX;
+//         lastZoomPoint.top = event.clientY;
+//     }
+//     var cont = document.getElementById('grid-snap')
+//     const lastPositions = savePositions();
+//     const mouseX = event.clientX - cont.offsetLeft;
+//     const mouseY = event.clientY - cont.offsetTop;
+//     // console.log('\n\n this is the offset top')
+//     // console.log(cont.offsetTop);
+//     // console.log('\n\n this is the mouseY')
+//     // console.log(mouseY);
 
     
-    // Apply the new scale while keeping the mouse position fixed
-    if(scale!==1) {
-        // lastZoomPoint.left = event.clientX;
-        // lastZoomPoint.top = event.clientY;
-    //     if(event.deltaY < 0) {
-    //         if(!(event.clientX === lastZoomPoint.left)) {
-    //             console.log('error \n\n');
-    //             newMouseX = mouseX*1.24;
-    //         }
-    //         if(!(event.clientY === lastZoomPoint.top)) {
-    //             newMouseY = mouseY*1.24;
-    //         }
-    //     }else {
-    //         if(!(event.clientX === lastZoomPoint.left)) {
-    //             newMouseX = mouseX/1.24;
-    //         }
-    //         if(!(event.clientY === lastZoomPoint.top)) {
-    //             newMouseY = mouseY/1.24;
-    //         }
-    //     }
-    //     if((event.clientX === lastZoomPoint.left) && (event.clientY === lastZoomPoint.top)) {
-    //         cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-    //     }else {
-    //         cont.style.transformOrigin = `${newMouseX}px ${newMouseY}px`;
-    //         lastZoomPoint.left = event.clientX;
-    //         lastZoomPoint.top = event.clientY;
-    //     }
-    // }else {
-        //     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-    }
-    if(!(event.clientX === lastZoomPoint.left)) {
-        var distanceX = (event.clientX-lastZoomPoint.left);
-    }
-    if(!(event.clientY === lastZoomPoint.top)) {
-        var distanceY = (event.clientY-lastZoomPoint.top);
-    }
-    if((event.clientX !== lastZoomPoint.left) || (event.clientY !== lastZoomPoint.top)) {
-        // cont.style.transformOrigin = `${(lastTransform.left+distanceX)}px ${mouseY}px`;
-        console.log('this is The distance in x, y\n' + distanceX + ', ' + distanceY);
-        lastZoomPoint.left = event.clientX;
-        lastZoomPoint.top = event.clientY;
-    }
+//     // Apply the new scale while keeping the mouse position fixed
+//     if(scale!==1) {
+//         // lastZoomPoint.left = event.clientX;
+//         // lastZoomPoint.top = event.clientY;
+//     //     if(event.deltaY < 0) {
+//     //         if(!(event.clientX === lastZoomPoint.left)) {
+//     //             console.log('error \n\n');
+//     //             newMouseX = mouseX*1.24;
+//     //         }
+//     //         if(!(event.clientY === lastZoomPoint.top)) {
+//     //             newMouseY = mouseY*1.24;
+//     //         }
+//     //     }else {
+//     //         if(!(event.clientX === lastZoomPoint.left)) {
+//     //             newMouseX = mouseX/1.24;
+//     //         }
+//     //         if(!(event.clientY === lastZoomPoint.top)) {
+//     //             newMouseY = mouseY/1.24;
+//     //         }
+//     //     }
+//     //     if((event.clientX === lastZoomPoint.left) && (event.clientY === lastZoomPoint.top)) {
+//     //         cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+//     //     }else {
+//     //         cont.style.transformOrigin = `${newMouseX}px ${newMouseY}px`;
+//     //         lastZoomPoint.left = event.clientX;
+//     //         lastZoomPoint.top = event.clientY;
+//     //     }
+//     // }else {
+//         //     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+//     }
+//     if(!(event.clientX === lastZoomPoint.left)) {
+//         var distanceX = (event.clientX-lastZoomPoint.left);
+//     }
+//     if(!(event.clientY === lastZoomPoint.top)) {
+//         var distanceY = (event.clientY-lastZoomPoint.top);
+//     }
+//     if((event.clientX !== lastZoomPoint.left) || (event.clientY !== lastZoomPoint.top)) {
+//         // cont.style.transformOrigin = `${(lastTransform.left+distanceX)}px ${mouseY}px`;
+//         console.log('this is The distance in x, y\n' + distanceX + ', ' + distanceY);
+//         lastZoomPoint.left = event.clientX;
+//         lastZoomPoint.top = event.clientY;
+//     }
 
-    // Calculate the new scale
-    if (event.deltaY < 0) {
-      // Zoom in
-      scale *= 1.24;
-    } else {
-      // Zoom out
-      scale /= 1.24;
-    }
+//     // Calculate the new scale
+//     if (event.deltaY < 0) {
+//       // Zoom in
+//       scale *= 1.24;
+//     } else {
+//       // Zoom out
+//       scale /= 1.24;
+//     }
 
-    cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-    cont.style.transform = `scale(${scale})`;
-    lastTransform.left = mouseX;
-    lastTransform.top = mouseY;
-    savePositions();
-    console.log('the point of the mouse after is - '+ event.clientX + ', ' + event.clientY);
-    // if(e.ctrlKey) {
-    // }
-});
+//     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+//     cont.style.transform = `scale(${scale})`;
+//     lastTransform.left = mouseX;
+//     lastTransform.top = mouseY;
+//     savePositions();
+//     console.log('the point of the mouse after is - '+ event.clientX + ', ' + event.clientY);
+//     // if(e.ctrlKey) {
+//     // }
+// });
 
 // Add the 'wheel' event listener
 // window.addEventListener('wheel', (event) => {

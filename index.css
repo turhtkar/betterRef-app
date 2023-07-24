@@ -22,6 +22,7 @@
     top: 50%;
     transform: translate(-50%, -50%);
 }
+
 body {
     /* width: -webkit-fill-available;
     height: -webkit-fill-available;
@@ -40,24 +41,37 @@ body {
     overflow: hidden;
     /* margin: 10%; */
 }
+
 html {
     background-color: #202020;
-    width: -webkit-fill-available;   /* viewport width */
-    height: -webkit-fill-available;  /* viewport height */
+    width: -webkit-fill-available;
+    /* viewport width */
+    height: -webkit-fill-available;
+    /* viewport height */
     overflow: hidden;
 }
-html, body {
-    /* overflow: hidden; */
-}
+
+
 /* html::-webkit-scrollbar {
     width: 0px; 
 } */
 .textbox {
-    position: absolute;
+    position: relative;
     overflow: hidden;
-    height: auto;
-    padding: 8px;
-  }
+    height: 100% !important;
+    width: 100% !important;
+    /* padding: 8px; */
+}
+
+.textboxContainer {
+    padding: 10px;
+    display: flex;
+}
+.container {
+    width: fit-content;
+    height: fit-content;
+}
+
 textarea {
     background-color: rgb(48 48 48 / 50%);
     color: #ebebeb;
@@ -66,23 +80,42 @@ textarea {
     overflow: hidden;
     box-sizing: border-box;
     border-radius: 7px;
-    font-size: 32px;
-    outline-color: #3d3f48;
+    font-size: 42px;
+    outline: #3d3f48;
+    /* outline-color: #3d3f48; */
+    padding: 8px;
 }
+
+input[type=text]:focus, textarea:focus {
+    box-shadow: 0px 1px 1px #f2dede inset, 0px 0px 8px #dff0d8;
+    outline: none;
+    padding-top: 24px !important;
+}
+
 .close-button {
     position: absolute;
-    top: -10px;
-    right: -10px;
-    width: 20px;
-    height: 20px;
+    top: 15px;
+    z-index: inherit;
+    /* right: -10px; */
+    width: 30px;
+    height: 30px;
     line-height: 20px;
     text-align: center;
-    background-color: #ebebeb;
-    color: #000000;
-    border-radius: 50%;
+    background-color: transparent;
+    color: red;
+    /* border-radius: 7px solid; */
+    border: transparent;
     cursor: pointer;
-  }
-  #grid-snap {
+    display: none;
+}
+.close-button:hover {
+    transform: scale(1.24);
+}
+.draggable:hover> .close-button, .container:hover > .close-button {
+    display: block;
+}
+
+#grid-snap {
     border-radius: 4px;
     /* padding: 2%; */
     /* margin: 1rem 0 0 1rem; */
@@ -91,4 +124,6 @@ textarea {
     touch-action: none;
     transition: width 0.05s ease, height 0.05s ease;
     transform: scale(1);
-  }
+    display: flex;
+    flex-wrap: wrap;
+}
