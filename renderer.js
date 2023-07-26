@@ -1,21 +1,13 @@
 const interact = require('interactjs');
 const { ipcRenderer } = require('electron');
 const { webFrame } = require('electron');
-var selectedElement = 0;
 
-// Get the body element
-let body = document.body;
 
-let zoomFactor = 1; // Keep track of the zoom level
+let zoomFactor = 1.24; // Keep track of the zoom level
+let translation = {x: 0, y: 0};
 let scale = 1;
-let offsetX = 0;
-let offsetY = 0;
-var newMouseX = 0;
-var newMouseY = 0;
-var closeButton = 0;
-var lastTransform = {left: 0, top: 0};
-var pointX = 0, pointY = 0;
 const lastZoomPoint = {left: 0, top: 0};
+var centerPoint = {x:0, y:0}
 
 let zIndex = 0;
 let load = 0;
@@ -36,8 +28,34 @@ window.onload = function() {
     dropZone.ondrop = (event) => {
         event.preventDefault();
         let refGrid = document.createElement('div');
+        let wrapperGrid = document.createElement('div');
+        wrapperGrid.className = 'wrapper-grid';
         refGrid.id = 'grid-snap';
-        document.body.appendChild(refGrid);
+        // document.body.appendChild(refGrid);
+        wrapperGrid.appendChild(refGrid);
+        document.body.appendChild(wrapperGrid);
+
+        let accx = 0, accy = 0;
+
+        refGrid.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                scale *= 1.24;
+                accx += e.offsetX * scale/1.24 - e.offsetX * scale;
+                accy += e.offsetY * scale/1.24 - e.offsetY * scale;
+            } else {
+                scale /= 1.24;
+                accx += e.offsetX * scale * 1.24 - e.offsetX * scale;
+                accy += e.offsetY * scale * 1.24 - e.offsetY * scale;
+            }
+
+            refGrid.style.transformOrigin = "0 0";
+            e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
+            wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
+            translation.x = accx;
+            translation.y = accy;
+            load = 0;
+        });
 
         for (let f of event.dataTransfer.files) {
         // Create container for each element
@@ -136,6 +154,11 @@ window.onload = function() {
 
 // hide close button when click anywhere else on the document
 document.addEventListener('click', function(event) {
+    var centerGrid = document.getElementById('grid-snap').getBoundingClientRect();
+    centerPoint.x = centerGrid.width/2;
+    centerPoint.y = centerGrid.height/2;
+    console.log('this is the center point - ' + centerPoint.x + ' , ' + centerPoint.y);
+    console.log(document.getElementById('grid-snap').getBoundingClientRect());
     hideAllCloseButtons();
 });
 
@@ -197,6 +220,7 @@ function getOutOfBoundTravel(event) {
 function resizeCanvas() {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     contStyle = document.getElementById('grid-snap').style;
+    console.log('this is the grid width - ' + contStyle.width);
     if (lastPos.right>0) {
         pos.right += lastPos.right;
         contStyle.width = ((boundRect.width + lastPos.right) + 'px');
@@ -207,6 +231,8 @@ function resizeCanvas() {
     }
     lastPos.bottom = 0;
     lastPos.right = 0;
+    centerPoint.x = boundRect.width/2;
+    centerPoint.y = boundRect.height/2;
 }
 
 function resizeMoveListener(event) {
@@ -434,16 +460,89 @@ ipcRenderer.on('create-new-note', createNewNote);
 //     }
 // });
 
-// function setTransform() {
-//     document.documentElement.style.transform = "translate(" + pointX + "px, " + pointY + "px) scale(" + scale + ")";
-//     savePositions();
-//   }
 
-// // window.onmousedown = function(e) {
-// //     e.preventDefault();
-// //     start = {x: e.clientX - pointX, y: e.clientY-pointY};
-// //     panning = true;
-// // }
+// Attach wheel event listener
+// let gridWrapper = document.body.querySelector('.wrapper-grid');
+// gridWrapper.querySelector('#grid-snap').addEventListener('wheel', (event)=> {
+//     let cont = document.getElementById('grid-snap');
+//     let accx = 0, accy = 0;
+//     event.preventDefault();
+//     const mouseX = event.clientX - cont.offsetLeft;
+//     const mouseY = event.clientY - cont.offsetTop;
+
+//     if (event.deltaY < 0) {
+//       // Zoom in
+//       scale *= 1.24;
+//       accx += (event.offsetX * scale/1.24 - event.offsetX * scale);
+//       accy += (event.offsetY * scale/1.24 - event.offsetY * scale);
+//     } else {
+//       // Zoom out
+//       scale /= 1.24;
+//       accx += (event.offsetX * scale * 1.24 - event.offsetX * scale);
+//       accy += (event.offsetY * scale * 1.24 - event.offsetY * scale);
+//     }
+
+//     cont.style.transformOrigin = `0 0`; // Top-left
+//     event.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`;
+//     gridWrapper.style.transform = `translate(${accx}px, ${accy}px)`;
+// });
+
+
+// document.addEventListener('wheel', function(event) {
+//     // Prevent the default browser action
+//     event.preventDefault();
+//     console.log('hi');
+//     let gridSnap = document.getElementById('grid-snap');
+//     // Get the mouse position at the time of the wheel event
+//     var mouseX = event.clientX - gridSnap.offsetLeft;
+//     var mouseY = event.clientY - gridSnap.offsetTop;
+//     var newMouseX=0;
+//     var newMouseY=0;
+//     console.log('this is the mouse x, y at zoom' + mouseX + ' , ' + mouseY);
+
+//     // Determine whether the wheel was scrolled up or down
+//     if (event.deltaY < 0) {
+//         // Wheel scrolled up, zoom in
+//         scale *= zoomFactor;
+//         // get where the mouse is supposed to be after scale
+//         newMouseX = mouseX*scale;
+//         newMouseY = mouseY*scale
+//         console.log('this is the new mouse pose ' + newMouseX + ' , ' + newMouseY);
+//     } else {
+//         // Wheel scrolled down, zoom out
+//         scale /= zoomFactor;
+//         // get where the mouse is supposed to be after scale
+//         newMouseX = mouseX/scale;
+//         newMouseY = mouseY/scale;        
+//     }
+//     console.log('this is the new mouse pose ' + newMouseX + ' , ' + newMouseY);
+//     //calculate the distance between the mouse pos to the new expected mouse pos after scale
+//     var disX = Math.round(newMouseX - mouseX);
+//     var disY = Math.round(newMouseY - mouseY);
+//     console.log('this is the distance betweent the new expected mouse pos - ' + disX + ' , ' + disY);
+
+//     // get the grid transition to calculate the new transition of the grid
+//     const style = window.getComputedStyle(gridSnap);
+//     const matrix = style.transform || style.webkitTransform || style.mozTransform;
+    
+//     // Can either be 2d or 3d transform
+//     const matrixType = matrix.includes('3d') ? '3d' : '2d'
+//     const matrixValues = matrix.match(/matrix.*\((.+)\)/)[1].split(', ');
+//     if (matrixType === '2d') {
+//         const x = parseFloat(matrixValues[4]);
+//         const y = parseFloat(matrixValues[5]);
+//         var translateX = (x - disX);
+//         var translateY = (y - disY);
+//         console.log('this is the transform translate x, y - ' + translateX + ' , ' + translateY);
+//     }
+//     if(gridSnap.style.transform) {
+//         // var newTranslate = {x: ()}
+//     }
+
+//     // Apply the scale and translation
+//     gridSnap.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+// }); // The 'passive' option needs to be false in order to call preventDefault()
+
 
 // window.addEventListener('wheel', (event)=> {
 //     event.preventDefault();
@@ -457,42 +556,7 @@ ipcRenderer.on('create-new-note', createNewNote);
 //     const lastPositions = savePositions();
 //     const mouseX = event.clientX - cont.offsetLeft;
 //     const mouseY = event.clientY - cont.offsetTop;
-//     // console.log('\n\n this is the offset top')
-//     // console.log(cont.offsetTop);
-//     // console.log('\n\n this is the mouseY')
-//     // console.log(mouseY);
 
-    
-//     // Apply the new scale while keeping the mouse position fixed
-//     if(scale!==1) {
-//         // lastZoomPoint.left = event.clientX;
-//         // lastZoomPoint.top = event.clientY;
-//     //     if(event.deltaY < 0) {
-//     //         if(!(event.clientX === lastZoomPoint.left)) {
-//     //             console.log('error \n\n');
-//     //             newMouseX = mouseX*1.24;
-//     //         }
-//     //         if(!(event.clientY === lastZoomPoint.top)) {
-//     //             newMouseY = mouseY*1.24;
-//     //         }
-//     //     }else {
-//     //         if(!(event.clientX === lastZoomPoint.left)) {
-//     //             newMouseX = mouseX/1.24;
-//     //         }
-//     //         if(!(event.clientY === lastZoomPoint.top)) {
-//     //             newMouseY = mouseY/1.24;
-//     //         }
-//     //     }
-//     //     if((event.clientX === lastZoomPoint.left) && (event.clientY === lastZoomPoint.top)) {
-//     //         cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-//     //     }else {
-//     //         cont.style.transformOrigin = `${newMouseX}px ${newMouseY}px`;
-//     //         lastZoomPoint.left = event.clientX;
-//     //         lastZoomPoint.top = event.clientY;
-//     //     }
-//     // }else {
-//         //     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-//     }
 //     if(!(event.clientX === lastZoomPoint.left)) {
 //         var distanceX = (event.clientX-lastZoomPoint.left);
 //     }
@@ -515,7 +579,7 @@ ipcRenderer.on('create-new-note', createNewNote);
 //       scale /= 1.24;
 //     }
 
-//     cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
+//     // cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
 //     cont.style.transform = `scale(${scale})`;
 //     lastTransform.left = mouseX;
 //     lastTransform.top = mouseY;
