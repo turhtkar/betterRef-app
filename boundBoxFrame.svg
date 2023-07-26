@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="316" height="314" viewBox="0 0 316 314" preserveAspectRatio="none">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke-width: 2px;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #5ea0e5;
+      }
+
+      .cls-2 {
+        fill: #fff;
+        stroke-width: 1px;
+      }
+    </style>
+  </defs>
+  <rect class="cls-1" x="8" y="7" width="300" height="300"/>
+  <rect class="cls-2" x="303" y="302" width="8" height="8"/>
+  <rect class="cls-2" x="154" y="302" width="8" height="8"/>
+  <rect class="cls-2" x="5" y="302" width="8" height="8"/>
+  <rect class="cls-2" x="303" y="4" width="8" height="8"/>
+  <rect class="cls-2" x="154" y="4" width="8" height="8"/>
+  <rect class="cls-2" x="5" y="4" width="8" height="8"/>
+  <rect class="cls-2" x="303" y="150" width="8" height="8"/>
+  <rect class="cls-2" x="5" y="150" width="8" height="8"/>
+</svg>

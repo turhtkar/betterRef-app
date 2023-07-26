@@ -135,3 +135,25 @@ input[type=text]:focus, textarea:focus {
     align-items: center;
     position: absolute;
 }
+.square {
+    border: 2px solid #5ea0e5;
+    width: 10px;
+    height: 10px;
+    position: absolute;
+    background-color: white;
+}
+#boundingBox {
+    border: 2px solid #5ea0e5;
+    width: 500px;
+    height: 500px;
+    position: absolute;
+    pointer-events:none;
+    display: none;
+    z-index: 100000;
+}
+.right-bound {
+    height: inherit;
+    width: 0.01px;
+    position: absolute;
+    left: 100%;
+}

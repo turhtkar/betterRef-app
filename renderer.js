@@ -13,17 +13,23 @@ let zIndex = 0;
 let load = 0;
 let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
 let pos = {left: 0, top: 0, right: 0, bottom: 0};
+var isResize = 0;
 
 
 //Drag and drop img files into the application window to use them
 window.onload = function() {
-
+    
     let dropZone = document.getElementById('drop_zone');
-
+    
     dropZone.ondragover = (event) => {
         event.preventDefault();
         return false;
     };
+    // var brHandle = document.querySelector('.handle-br');
+    // var curLef = brHandle.getBoundingClientRect();
+    // console.log(curLef.left);
+    // console.log((curLef.left-16) + 'px');
+    // brHandle.style.left = (curLef.left-16) + 'px';
 
     dropZone.ondrop = (event) => {
         event.preventDefault();
@@ -142,6 +148,7 @@ window.onload = function() {
                     let closeButton = this.querySelector('.close-button');
                     if (closeButton) {
                         closeButton.style.display = 'block';
+                        updateBoundingBox(event);
                     }
                 });
             }
@@ -164,6 +171,7 @@ document.addEventListener('click', function(event) {
 
 function hideAllCloseButtons() {
     let closeButtons = document.querySelectorAll('.close-button');
+    document.getElementById('boundingBox').style.display='none';
     closeButtons.forEach(function(button) {
         button.style.display = 'none';
     });
@@ -188,11 +196,14 @@ function dragMoveListener(event) {
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
-
+        translation.x = x;
+        translation.y = y;
     }
+    updateBoundingBox(event);
 }
 
 function endDragListener(event) {
+    updateBoundingBox(event);
     getOutOfBoundTravel(event);
     resizeCanvas();
     var textEl = event.target.querySelector('p');
@@ -203,6 +214,8 @@ function endDragListener(event) {
             .toFixed(2) + 'px');
 }
 function endResizeListener(event) {
+    updateBoundingBox(event);
+    isResize=0;
     getOutOfBoundTravel(event);
     resizeCanvas();
 }
@@ -237,7 +250,7 @@ function resizeCanvas() {
 
 function resizeMoveListener(event) {
     let { target, rect } = event;
-
+    isResize = 1;
     if(load===0) {
         var positions = savePositions();
         var draggableItems = document.querySelectorAll('.draggable');
@@ -257,10 +270,14 @@ function resizeMoveListener(event) {
 
     x += event.deltaRect.left;
     y += event.deltaRect.top;
+    
+    translation.x = x;
+    translation.y = y;
 
     target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     target.setAttribute('data-x', x);
     target.setAttribute('data-y', y);
+    updateBoundingBox(event);
 }
 
 interact('.draggable').on('tap', function (event) {
@@ -273,7 +290,7 @@ interact('.draggable').on('tap', function (event) {
 
     // Show the bounding box for the new selected element
     target.classList.add('selected');
-    updateBoundingBox(target);
+    updateBoundingBox(event);
     event.preventDefault();
 });
 
@@ -290,14 +307,16 @@ interact('body').on('click', function(event) {
 });
 
 function updateBoundingBox(element) {
-    let boundingBox = document.getElementById('boundingBox');
-    let rect = element.getBoundingClientRect();
-
-    boundingBox.style.width = rect.width + 'px';
-    boundingBox.style.height = rect.height + 'px';
-    boundingBox.style.left = rect.left + 'px';
-    boundingBox.style.top = rect.top + 'px';
+    //get the boundingBox element
+    const boundingBox = document.querySelector('#boundingBox');
+    var boundWidth = element.target.getBoundingClientRect().width;
+    var boundHeight = element.target.getBoundingClientRect().height
     boundingBox.style.display = 'block';
+    // get the grid transition to calculate the new transition of the grid
+    let gridSnap = document.getElementById('grid-snap').getBoundingClientRect();
+    boundingBox.style.transform = 'translate(' + (gridSnap.x + translation.x) + 'px, ' + (gridSnap.y + translation.y) + 'px)';
+    boundingBox.style.width = (boundWidth-3) + 'px';
+    boundingBox.style.height = (boundHeight-3) + 'px';
 }
 
 function savePositions() {
@@ -405,6 +424,34 @@ function hideAllCloseButtons() {
   
 // Listen for the 'create-new-note' event
 ipcRenderer.on('create-new-note', createNewNote);
+
+function moveBoundingBox(event) {
+    //get the boundingBox element
+    const boundingBox = document.querySelector('#boundingBox');
+    var boundWidth = event.getBoundingClientRect().width;
+    var boundHeight = event.getBoundingClientRect().height
+    // get the grid transition to calculate the new transition of the grid
+    const style = window.getComputedStyle(gridSnap);
+    const matrix = style.transform || style.webkitTransform || style.mozTransform;
+    
+    // Can either be 2d or 3d transform
+    const matrixType = matrix.includes('3d') ? '3d' : '2d'
+    const matrixValues = matrix.match(/matrix.*\((.+)\)/)[1].split(', ');
+    if (matrixType === '2d') {
+        const x = parseFloat(matrixValues[4]);
+        const y = parseFloat(matrixValues[5]);
+        boundingBox.style.transform = 'translate(' + (style.left + x) + 'px, ' + (style.top) + 'px)';
+        console.log('translate(' + (style.left + x) + 'px, ' + (style.top) + 'px)');
+    }
+    if(isResize===1) {
+        boundingBox.style.width = boundWidth + 'px';
+        boundingBox.style.height = boundHeight + 'px';
+    }
+
+
+    //get the boundingBoxHandles
+    
+}
 
 // const closeButton = document.querySelector('.close-button');
 // noteContainer.textarea.addEventListener('focusin', function() {
