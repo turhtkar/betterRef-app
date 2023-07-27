@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
-const { enable } = require('@electron/remote/main');
+// const { enable } = require('@electron/remote/main');
 const { MenuItem } = require('electron/main');
 const electronReload = require('electron-reload');
 
@@ -23,8 +23,8 @@ function createWindow() {
     });
   }
 
-  // Enable remote module for the window
-  enable(win.webContents);
+  // // Enable remote module for the window
+  // enable(win.webContents);
 
   win.loadFile('index.html');
 

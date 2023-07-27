@@ -8,6 +8,7 @@ let translation = {x: 0, y: 0};
 let scale = 1;
 const lastZoomPoint = {left: 0, top: 0};
 var centerPoint = {x:0, y:0}
+var selectedElement = 0;
 
 let zIndex = 0;
 let load = 0;
@@ -58,9 +59,17 @@ window.onload = function() {
             refGrid.style.transformOrigin = "0 0";
             e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
             wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
-            translation.x = accx;
-            translation.y = accy;
-            load = 0;
+            if(selectedElement != 0) {
+                updateBoundingBox(selectedElement);
+            }
+            // translation.x = accx;
+            // translation.y = accy;
+            
+            // boundBox = document.querySelector('#boundingBox');
+            // if(boundBox.style.display != 'none') {
+            //     boundBox.style.transform = 'translate( ' + (translation.x + refGrid.getBoundingClientRect().x)/scale + 'px, ' + (translation.y + refGrid.getBoundingClientRect().y)/scale + 'px)'
+            //     boundBox.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
+            // }
         });
 
         for (let f of event.dataTransfer.files) {
@@ -146,9 +155,12 @@ window.onload = function() {
                     event.stopPropagation();
                     hideAllCloseButtons();
                     let closeButton = this.querySelector('.close-button');
+                    selectedElement = 0;
                     if (closeButton) {
                         closeButton.style.display = 'block';
+                        selectedElement = event;
                         updateBoundingBox(event);
+                        console.log(event.target.getBoundingClientRect());
                     }
                 });
             }
@@ -182,6 +194,7 @@ function dragMoveListener(event) {
     var target = event.target;
     event.target.style.zIndex = 1000;
     if(load===0) {
+        console.log('save pos');
         var positions = savePositions();
         var draggableItems = document.querySelectorAll('.draggable');
         for(let i = 0; i<draggableItems.length; i++ ) {
@@ -190,8 +203,8 @@ function dragMoveListener(event) {
         }
         load++;
     }
-    var x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-    var y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+    var x = (parseFloat(target.getAttribute('data-x')) || 0) + (event.dx/scale);
+    var y = (parseFloat(target.getAttribute('data-y')) || 0) + (event.dy/scale);
     if(y>=0 && x>=0){
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
@@ -199,13 +212,20 @@ function dragMoveListener(event) {
         translation.x = x;
         translation.y = y;
     }
-    updateBoundingBox(event);
+    getOutOfBoundTravel(event);
+    window.requestAnimationFrame(function() {
+        resizeCanvas(event);
+        updateBoundingBox(event);
+    });
 }
 
 function endDragListener(event) {
-    updateBoundingBox(event);
     getOutOfBoundTravel(event);
-    resizeCanvas();
+    window.requestAnimationFrame(function() {
+        resizeCanvas(event);
+        updateBoundingBox(event);
+    });
+    // updateBoundingBox(event);
     var textEl = event.target.querySelector('p');
     event.target.style.zIndex = zIndex++;
     textEl && (textEl.textContent = 'moved a distance of ' +
@@ -214,38 +234,58 @@ function endDragListener(event) {
             .toFixed(2) + 'px');
 }
 function endResizeListener(event) {
-    updateBoundingBox(event);
     isResize=0;
     getOutOfBoundTravel(event);
-    resizeCanvas();
+    window.requestAnimationFrame(function() {
+        resizeCanvas(event);
+        updateBoundingBox(event);
+    });
+    // updateBoundingBox(event);
 }
 
 function getOutOfBoundTravel(event) {
     var boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     var targetRect = event.target.getBoundingClientRect();
-
-    lastPos.left = (boundRect.x-targetRect.x);
-    lastPos.right = (targetRect.right-boundRect.right);
-    lastPos.top = (boundRect.top-targetRect.top);
-    lastPos.bottom = (targetRect.bottom-boundRect.bottom);
+    //we divide by scale, since when we zoom in and out, the y and x are also scaled and so to calculate the actual distance overlap we need to divide by the scale
+    lastPos.left = (boundRect.x-targetRect.x)/scale;
+    lastPos.right = (targetRect.right-boundRect.right)/scale;
+    lastPos.top = (boundRect.top-targetRect.top)/scale;
+    lastPos.bottom = (targetRect.bottom-boundRect.bottom)/scale;
+    console.log(boundRect);
+    console.log(targetRect);
 }
 
-function resizeCanvas() {
+function resizeCanvas(event) {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     contStyle = document.getElementById('grid-snap').style;
-    console.log('this is the grid width - ' + contStyle.width);
+    // boundBox = document.getElementById('boundingBox');
+    // var boundBoxX = boundBox.getBoundingClientRect().x;
+    // var boundBoxY = boundBox.getBoundingClientRect().y;
+    console.log('this is the grid y - ' + boundRect.y);
     if (lastPos.right>0) {
         pos.right += lastPos.right;
-        contStyle.width = ((boundRect.width + lastPos.right) + 'px');
+        contStyle.width = ((boundRect.width/scale + lastPos.right) + 'px');
     }
     if (lastPos.bottom>0) {
         pos.bottom += lastPos.bottom;
-        contStyle.height = ((boundRect.height + lastPos.bottom) + 'px');
+        console.log('this is the distance to grow' + lastPos.bottom);
+        console.log('this is the actual height before ' + contStyle.height);
+        console.log('this is the calc height before ' + boundRect.height/scale);
+        contStyle.height = ((boundRect.height/scale + lastPos.bottom) + 'px');
+        //change bounding box y since when we increase the grid width we are also changing the intial y of the boundingBox since
+        // it is placed on the same depth level as the wrapper and so it is using the x y cordinate system of the body.
     }
     lastPos.bottom = 0;
     lastPos.right = 0;
     centerPoint.x = boundRect.width/2;
     centerPoint.y = boundRect.height/2;
+    document.body.offsetHeight;
+    updateBoundingBox(event);
+    window.requestAnimationFrame(function() {
+        console.log('resize');
+    });
+    // boundingBox.style.transform = 'translate(' + (boundRect.x + translation.x - 7) + 'px, ' + (boundRect.y + translation.y -7) + 'px)';
+    // boundBox.style.transform = 'translate( ' + boundBoxX-7 + 'px , ' + boundBoxY-7 + 'px )';
 }
 
 function resizeMoveListener(event) {
@@ -277,7 +317,11 @@ function resizeMoveListener(event) {
     target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     target.setAttribute('data-x', x);
     target.setAttribute('data-y', y);
-    updateBoundingBox(event);
+    getOutOfBoundTravel(event);
+    window.requestAnimationFrame(function() {
+        resizeCanvas(event);
+        updateBoundingBox(event);
+    });
 }
 
 interact('.draggable').on('tap', function (event) {
@@ -314,9 +358,12 @@ function updateBoundingBox(element) {
     boundingBox.style.display = 'block';
     // get the grid transition to calculate the new transition of the grid
     let gridSnap = document.getElementById('grid-snap').getBoundingClientRect();
-    boundingBox.style.transform = 'translate(' + (gridSnap.x + translation.x) + 'px, ' + (gridSnap.y + translation.y) + 'px)';
+    // boundingBox.style.transform = 'translate(' + (gridSnap.x + translation.x - 7)+ 'px, ' + (gridSnap.y + translation.y -7) + 'px)';
+    boundingBox.style.left = element.target.getBoundingClientRect().x + 'px';
+    boundingBox.style.top = element.target.getBoundingClientRect().y + 'px';
     boundingBox.style.width = (boundWidth-3) + 'px';
     boundingBox.style.height = (boundHeight-3) + 'px';
+
 }
 
 function savePositions() {
