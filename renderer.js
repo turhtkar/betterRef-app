@@ -45,6 +45,9 @@ window.onload = function() {
         let accx = 0, accy = 0;
 
         refGrid.addEventListener("wheel", (e) => {
+            if(e.target !== refGrid) {
+                return;
+            }
             e.preventDefault();
             if (e.deltaY < 0) {
                 scale *= 1.24;
@@ -141,9 +144,10 @@ window.onload = function() {
                     margin: 10,
                     listeners: { move: resizeMoveListener, end: endResizeListener },
                     modifiers: [
-                        interact.modifiers.restrictEdges({
-                            outer: 'parent',
-                            endOnly: true,
+                        interact.modifiers.restrictRect({
+                            // restriction: 'parent',
+                            elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                            endOnly: true
                         }),
                         interact.modifiers.restrictSize({
                             min: { width: 50, height: 50 },
@@ -304,8 +308,8 @@ function resizeMoveListener(event) {
     let x = (parseFloat(target.getAttribute('data-x')) || 0);
     let y = (parseFloat(target.getAttribute('data-y')) || 0);
 
-    target.style.width = rect.width + 'px';
-    target.style.height = rect.height + 'px';
+    target.style.width = rect.width/scale + 'px';
+    target.style.height = rect.height/scale + 'px';
     target.style.top = "0px";
 
     x += event.deltaRect.left;
