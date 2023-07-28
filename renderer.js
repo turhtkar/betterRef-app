@@ -41,12 +41,22 @@ window.onload = function() {
         // document.body.appendChild(refGrid);
         wrapperGrid.appendChild(refGrid);
         document.body.appendChild(wrapperGrid);
-
+        //Zoom on mouse wheel event
         let accx = 0, accy = 0;
 
         refGrid.addEventListener("wheel", (e) => {
             if(e.target !== refGrid) {
                 return;
+            }
+            if(load===0) {
+                console.log('save pos');
+                var positions = savePositions();
+                var draggableItems = document.querySelectorAll('.draggable');
+                for(let i = 0; i<draggableItems.length; i++ ) {
+                    draggableItems[i].style.position = "absolute";
+                    draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
+                }
+                load++;
             }
             e.preventDefault();
             if (e.deltaY < 0) {
@@ -75,6 +85,63 @@ window.onload = function() {
             // }
         });
 
+        let isPanning = false;
+        let startPan = { x: 0, y: 0 };
+        let accPan = { x: 0, y: 0 };
+
+        refGrid.addEventListener("mousedown", (e) => {
+            if (e.button === 1) {  // Check if the middle (wheel) button is pressed
+                isPanning = true;
+                startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
+            }
+            if(load===0) {
+                console.log('save pos');
+                var positions = savePositions();
+                var draggableItems = document.querySelectorAll('.draggable');
+                for(let i = 0; i<draggableItems.length; i++ ) {
+                    draggableItems[i].style.position = "absolute";
+                    draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
+                }
+                load++;
+            }
+        });
+
+        refGrid.addEventListener("mousemove", (e) => {
+            if (isPanning) {
+                // Calculate the distance moved since the last mousemove event
+                let dx = e.clientX/scale - startPan.x;
+                let dy = e.clientY/scale - startPan.y;
+                // get the wrapper translate
+                const style = window.getComputedStyle(wrapperGrid)
+                const matrixValues = style.transform.match(/matrix.*\((.+)\)/)[1].split(', ');
+                const x = parseFloat(matrixValues[4]);
+                const y = parseFloat(matrixValues[5]);
+
+                // Accumulate the total distance moved for panning
+                accPan.x = dx+x;
+                accPan.y = dy+y;
+
+                // Apply the pan transformation
+                console.log('accPan.x - ' + startPan.x);
+                wrapperGrid.style.transform = `translate(${accPan.x}px, ${accPan.y}px)`;
+
+                // update the bounding box
+                if(selectedElement) {
+                    updateBoundingBox(selectedElement);
+                }
+                // Reset the start position for the next mousemove event
+                startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
+            }
+        });
+
+        document.addEventListener("mouseup", (e) => {
+            if (e.button === 1) {  // Check if the middle (wheel) button is released
+                isPanning = false;
+            }
+        });
+
+
+        
         for (let f of event.dataTransfer.files) {
         // Create container for each element
         let container = document.createElement('div');

@@ -134,6 +134,7 @@ input[type=text]:focus, textarea:focus {
     display: flex;
     align-items: center;
     position: absolute;
+    transform: translate(0px, 0px);
 }
 .square {
     border: 2px solid #5ea0e5;
