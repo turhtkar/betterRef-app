@@ -4,9 +4,10 @@ const { webFrame } = require('electron');
 
 
 let zoomFactor = 1.24; // Keep track of the zoom level
+var focusedElement = -1; // Keep track of the focused element
 let translation = {x: 0, y: 0};
 let scale = 1;
-const lastZoomPoint = {left: 0, top: 0};
+var lastZoomPoint = {x: 0, y: 0};
 var centerPoint = {x:0, y:0}
 var selectedElement = 0;
 
@@ -48,6 +49,10 @@ window.onload = function() {
             if(e.target !== refGrid) {
                 return;
             }
+            if(selectedElement) {
+                console.log(selectedElement.offsetX);
+                console.log(e.offsetX);
+            }
             if(load===0) {
                 console.log('save pos');
                 var positions = savePositions();
@@ -72,6 +77,9 @@ window.onload = function() {
             refGrid.style.transformOrigin = "0 0";
             e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
             wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
+            //for easy access into the wrapperGrid.style.Transform translate Points
+            lastZoomPoint.x = accx;
+            lastZoomPoint.y = accy;
             if(selectedElement != 0) {
                 updateBoundingBox(selectedElement);
             }
@@ -231,7 +239,9 @@ window.onload = function() {
                         closeButton.style.display = 'block';
                         selectedElement = event;
                         updateBoundingBox(event);
-                        console.log(event.target.getBoundingClientRect());
+                        console.log('this is where u looking for - ');
+                        console.log(event.target.getBoundingClientRect().x);
+                        console.log(event.offsetX);
                     }
                 });
             }
@@ -339,9 +349,6 @@ function resizeCanvas(event) {
     }
     if (lastPos.bottom>0) {
         pos.bottom += lastPos.bottom;
-        console.log('this is the distance to grow' + lastPos.bottom);
-        console.log('this is the actual height before ' + contStyle.height);
-        console.log('this is the calc height before ' + boundRect.height/scale);
         contStyle.height = ((boundRect.height/scale + lastPos.bottom) + 'px');
         //change bounding box y since when we increase the grid width we are also changing the intial y of the boundingBox since
         // it is placed on the same depth level as the wrapper and so it is using the x y cordinate system of the body.
@@ -422,16 +429,22 @@ interact('body').on('click', function(event) {
 });
 
 function updateBoundingBox(element) {
+    var targetRect = 0;
+    if(element.target) {
+        targetRect = element.target.getBoundingClientRect();
+    }else {
+        targetRect = element.getBoundingClientRect();
+    }
     //get the boundingBox element
     const boundingBox = document.querySelector('#boundingBox');
-    var boundWidth = element.target.getBoundingClientRect().width;
-    var boundHeight = element.target.getBoundingClientRect().height
+    var boundWidth = targetRect.width;
+    var boundHeight = targetRect.height
     boundingBox.style.display = 'block';
     // get the grid transition to calculate the new transition of the grid
     let gridSnap = document.getElementById('grid-snap').getBoundingClientRect();
     // boundingBox.style.transform = 'translate(' + (gridSnap.x + translation.x - 7)+ 'px, ' + (gridSnap.y + translation.y -7) + 'px)';
-    boundingBox.style.left = element.target.getBoundingClientRect().x + 'px';
-    boundingBox.style.top = element.target.getBoundingClientRect().y + 'px';
+    boundingBox.style.left = targetRect.x + 'px';
+    boundingBox.style.top = targetRect.y + 'px';
     boundingBox.style.width = (boundWidth-3) + 'px';
     boundingBox.style.height = (boundHeight-3) + 'px';
 
@@ -543,236 +556,110 @@ function hideAllCloseButtons() {
 // Listen for the 'create-new-note' event
 ipcRenderer.on('create-new-note', createNewNote);
 
-function moveBoundingBox(event) {
-    //get the boundingBox element
-    const boundingBox = document.querySelector('#boundingBox');
-    var boundWidth = event.getBoundingClientRect().width;
-    var boundHeight = event.getBoundingClientRect().height
-    // get the grid transition to calculate the new transition of the grid
-    const style = window.getComputedStyle(gridSnap);
-    const matrix = style.transform || style.webkitTransform || style.mozTransform;
-    
-    // Can either be 2d or 3d transform
-    const matrixType = matrix.includes('3d') ? '3d' : '2d'
-    const matrixValues = matrix.match(/matrix.*\((.+)\)/)[1].split(', ');
-    if (matrixType === '2d') {
-        const x = parseFloat(matrixValues[4]);
-        const y = parseFloat(matrixValues[5]);
-        boundingBox.style.transform = 'translate(' + (style.left + x) + 'px, ' + (style.top) + 'px)';
-        console.log('translate(' + (style.left + x) + 'px, ' + (style.top) + 'px)');
-    }
-    if(isResize===1) {
-        boundingBox.style.width = boundWidth + 'px';
-        boundingBox.style.height = boundHeight + 'px';
-    }
+// Get Element Max Focused Size - used to see the max amount of scale by the scale factor so that a 'focused element' will fit the
+// user window
+function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, direction) {
+    const windowWidth = window.innerWidth;
+    const windowHight = window.innerHeight;
+    var currWidth = targetWidth;
+    var currHeight = targetHeight;
+    var maxScale = currScale;
+    // target.getBoundingClientRect().width
+    if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
+        while(((currWidth*zoomFactor) <= windowWidth) && ((currHeight*zoomFactor) <=  windowHight)) {
+            console.log(currWidth);
+            currWidth*=zoomFactor;
+            currHeight*=zoomFactor
+            maxScale*=zoomFactor;
+        }
+    }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
+        while(((currWidth/zoomFactor) <= windowWidth) && ((currHeight/zoomFactor) <=  windowHight)) {
+            maxScale/=zoomFactor;
+            currWidth/=zoomFactor;
+            currHeight/=zoomFactor;
 
-
-    //get the boundingBoxHandles
+        }
+    }
+    return maxScale;
+}
+var focusedX = 0;
+var focusedY = 0;
+function updateFocusedTransform(target, direction, maxScale) {
+    var focusedScale = scale;
+    let targetRect = target.getBoundingClientRect();
+    //we use the same method we did with the zoom, only that now instead of zooming to mouse we want to zoom into the top le
+    while(focusedScale!=maxScale) {
+        console.log(target.offsetX);
+        if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
+            focusedScale *= 1.24;
+            focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale/1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
+            focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale/1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
+        }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
+            focusedScale /= 1.24;
+            focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale * 1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
+            focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale * 1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
+        }
+    }
+    // if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
+    //     focusedScale *= 1.24;
+    //     console.log('this is y ' + focusedY);
+    //     focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale/1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
+    //     focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale/1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
+    // }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
+    //     focusedScale /= 1.24;
+    //     focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale * 1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
+    //     focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale * 1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
+    // }
+    //calculate points to center focused elements
+    var rWidth = window.innerWidth - targetRect.width;//short for reminding width
+    var rHeight = window.innerHeight - targetRect.height;//short for reminding height
+    var refGrid = document.getElementById('grid-snap');
+    var wrapper = document.getElementsByClassName('wrapper-grid')[0];
+    // var wrapper = document.querySelector('.wrapper-grid');
     
+    refGrid.style.transformOrigin = "0 0";
+    refGrid.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
+    //you take the remaining width and height and divide it by 2 so from left to right there will be an equal amount of reminding width
+    // and from top to bottom there will be an equal amount of reminding Height
+    // focusedX += (rWidth/2);
+    // focusedY += (rHeight/2);
+    console.log('this is x and y ' + focusedX + ' , ' + focusedY);
+    wrapper.style.transform = `translate(${focusedX}px, ${focusedY}px)`;
 }
 
-// const closeButton = document.querySelector('.close-button');
-// noteContainer.textarea.addEventListener('focusin', function() {
-//     noteContainer.firstChild.style.display('block');
-// });
-
-// noteContainer.textarea.addEventListener('focusout', function() {
-//     noteContainer.firstChild.style.display('none');
-// });
-
-
-// document.addEventListener('click', (event) => {
-//     var target = event.target;
-//     console.log('this is ' + target);
-//     // target.style.transform = 'scale(4)';
-//     // selectedElement = target;
-// });
-
-
-// window.addEventListener('mouseup', function(e) {
-//     if(e.button === 1) { // Middle mouse button
-//         isPanning = false;
-//     }
-// });
-
-// // panning tool
-// let isPanning = false;
-// let start = { x: 0, y: 0 };
-// let scrollPos = { x: 0, y: 0 };
-
-// window.addEventListener('mousedown', function(e) {
-//     if(e.button === 1) { // Middle mouse button
-//         isPanning = true;
-//         start = { x: e.clientX - pointX, y: e.clientY - pointY };
-//         // scrollPos = { x: window.scrollX, y: window.scrollY };
-//     }
-// });
-
-// window.addEventListener('mousemove', function(e) {
-//     if(isPanning) {
-//         const dx = e.clientX - start.x;
-//         const dy = e.clientY - start.y;
-//         pointX = dx;
-//         pointY = dy;
-//         // window.scrollTo(scrollPos.x - dx, scrollPos.y - dy);
-//         setTransform();
-//     }
-// });
-
-// window.addEventListener('mouseup', function(e) {
-//     if(e.button === 1) { // Middle mouse button
-//         isPanning = false;
-//     }
-// });
-
-
-// Attach wheel event listener
-// let gridWrapper = document.body.querySelector('.wrapper-grid');
-// gridWrapper.querySelector('#grid-snap').addEventListener('wheel', (event)=> {
-//     let cont = document.getElementById('grid-snap');
-//     let accx = 0, accy = 0;
-//     event.preventDefault();
-//     const mouseX = event.clientX - cont.offsetLeft;
-//     const mouseY = event.clientY - cont.offsetTop;
-
-//     if (event.deltaY < 0) {
-//       // Zoom in
-//       scale *= 1.24;
-//       accx += (event.offsetX * scale/1.24 - event.offsetX * scale);
-//       accy += (event.offsetY * scale/1.24 - event.offsetY * scale);
-//     } else {
-//       // Zoom out
-//       scale /= 1.24;
-//       accx += (event.offsetX * scale * 1.24 - event.offsetX * scale);
-//       accy += (event.offsetY * scale * 1.24 - event.offsetY * scale);
-//     }
-
-//     cont.style.transformOrigin = `0 0`; // Top-left
-//     event.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`;
-//     gridWrapper.style.transform = `translate(${accx}px, ${accy}px)`;
-// });
-
-
-// document.addEventListener('wheel', function(event) {
-//     // Prevent the default browser action
-//     event.preventDefault();
-//     console.log('hi');
-//     let gridSnap = document.getElementById('grid-snap');
-//     // Get the mouse position at the time of the wheel event
-//     var mouseX = event.clientX - gridSnap.offsetLeft;
-//     var mouseY = event.clientY - gridSnap.offsetTop;
-//     var newMouseX=0;
-//     var newMouseY=0;
-//     console.log('this is the mouse x, y at zoom' + mouseX + ' , ' + mouseY);
-
-//     // Determine whether the wheel was scrolled up or down
-//     if (event.deltaY < 0) {
-//         // Wheel scrolled up, zoom in
-//         scale *= zoomFactor;
-//         // get where the mouse is supposed to be after scale
-//         newMouseX = mouseX*scale;
-//         newMouseY = mouseY*scale
-//         console.log('this is the new mouse pose ' + newMouseX + ' , ' + newMouseY);
-//     } else {
-//         // Wheel scrolled down, zoom out
-//         scale /= zoomFactor;
-//         // get where the mouse is supposed to be after scale
-//         newMouseX = mouseX/scale;
-//         newMouseY = mouseY/scale;        
-//     }
-//     console.log('this is the new mouse pose ' + newMouseX + ' , ' + newMouseY);
-//     //calculate the distance between the mouse pos to the new expected mouse pos after scale
-//     var disX = Math.round(newMouseX - mouseX);
-//     var disY = Math.round(newMouseY - mouseY);
-//     console.log('this is the distance betweent the new expected mouse pos - ' + disX + ' , ' + disY);
-
-//     // get the grid transition to calculate the new transition of the grid
-//     const style = window.getComputedStyle(gridSnap);
-//     const matrix = style.transform || style.webkitTransform || style.mozTransform;
-    
-//     // Can either be 2d or 3d transform
-//     const matrixType = matrix.includes('3d') ? '3d' : '2d'
-//     const matrixValues = matrix.match(/matrix.*\((.+)\)/)[1].split(', ');
-//     if (matrixType === '2d') {
-//         const x = parseFloat(matrixValues[4]);
-//         const y = parseFloat(matrixValues[5]);
-//         var translateX = (x - disX);
-//         var translateY = (y - disY);
-//         console.log('this is the transform translate x, y - ' + translateX + ' , ' + translateY);
-//     }
-//     if(gridSnap.style.transform) {
-//         // var newTranslate = {x: ()}
-//     }
-
-//     // Apply the scale and translation
-//     gridSnap.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-// }); // The 'passive' option needs to be false in order to call preventDefault()
-
-
-// window.addEventListener('wheel', (event)=> {
-//     event.preventDefault();
-//     console.log('the point of the mouse before is - '+ event.clientX + ', ' + event.clientY);
-//     //lastZoomPoint = {left: event.clientX, top: event.clientY};
-//     if(scale===1) {
-//         lastZoomPoint.left = event.clientX;
-//         lastZoomPoint.top = event.clientY;
-//     }
-//     var cont = document.getElementById('grid-snap')
-//     const lastPositions = savePositions();
-//     const mouseX = event.clientX - cont.offsetLeft;
-//     const mouseY = event.clientY - cont.offsetTop;
-
-//     if(!(event.clientX === lastZoomPoint.left)) {
-//         var distanceX = (event.clientX-lastZoomPoint.left);
-//     }
-//     if(!(event.clientY === lastZoomPoint.top)) {
-//         var distanceY = (event.clientY-lastZoomPoint.top);
-//     }
-//     if((event.clientX !== lastZoomPoint.left) || (event.clientY !== lastZoomPoint.top)) {
-//         // cont.style.transformOrigin = `${(lastTransform.left+distanceX)}px ${mouseY}px`;
-//         console.log('this is The distance in x, y\n' + distanceX + ', ' + distanceY);
-//         lastZoomPoint.left = event.clientX;
-//         lastZoomPoint.top = event.clientY;
-//     }
-
-//     // Calculate the new scale
-//     if (event.deltaY < 0) {
-//       // Zoom in
-//       scale *= 1.24;
-//     } else {
-//       // Zoom out
-//       scale /= 1.24;
-//     }
-
-//     // cont.style.transformOrigin = `${mouseX}px ${mouseY}px`;
-//     cont.style.transform = `scale(${scale})`;
-//     lastTransform.left = mouseX;
-//     lastTransform.top = mouseY;
-//     savePositions();
-//     console.log('the point of the mouse after is - '+ event.clientX + ', ' + event.clientY);
-//     // if(e.ctrlKey) {
-//     // }
-// });
-
-// Add the 'wheel' event listener
-// window.addEventListener('wheel', (event) => {
-//     if (event.ctrlKey) {
-//         event.preventDefault(); // Prevent the default scroll behavior
-//         const scaleFactor = 1.24; // Based on measures
-//         const mouseXPercentage = event.clientX / window.innerWidth;
-//         const mouseYPercentage = event.clientY / window.innerHeight;
-    
-//         // Determine if we are zooming in or out
-//         if (event.deltaY < 0) {
-//             scale *= scaleFactor;
-//             originX = mouseXPercentage * 100;
-//             originY = mouseYPercentage * 100;
-//         } else {
-//             scale /= scaleFactor;
-//         }
-    
-//         // Apply the transformations
-//         document.documentElement.style.transformOrigin = `${originX}% ${originY}%`;
-//         document.documentElement.style.transform = `scale(${scale})`;
-//     }
-// });
+document.addEventListener('keydown', function(event) {
+    if((event.key !== 'ArrowRight') && (event.key !== 'ArrowLeft')) {
+        console.log(event.key);
+        return;
+    }
+    event.preventDefault();
+    (event.key === 'ArrowRight') ? focusedElement++ : focusedElement--;//if we press right arrow key we got to the next element and if we press the left arrow key we go to the previous element
+    let draggableItems = document.querySelectorAll('.draggable');
+    //on evrey right arrow keyboard click we got to the next item of the draggable items increasing the focusedElement by 1
+    // so if we reach to a focusedElement that is equal to the amount of them then you would cycle back to the first dragged element
+    if(focusedElement === draggableItems.length) {
+        focusedElement=0;
+    }
+    if(focusedElement < 0) {
+        focusedElement = (draggableItems.length-1);
+    }
+    let target = draggableItems[focusedElement];
+    let targetRect = target.getBoundingClientRect();
+    console.log(target);
+    var direction = 1;
+    if((targetRect.width > window.innerWidth) || (targetRect.height > window.innerHeight)) {
+        direction = -1;
+    }
+    console.log(direction);
+    var maxScale = getElementMaxFocusedSize(targetRect.width, targetRect.height, scale, direction);
+    console.log(maxScale);
+    updateFocusedTransform(target, direction , maxScale);
+    hideAllCloseButtons();
+    let closeButton = this.querySelector('.close-button');
+    selectedElement = 0;
+    if (closeButton) {
+        closeButton.style.display = 'block';
+        selectedElement = target;
+        updateBoundingBox(target);
+    }
+});
