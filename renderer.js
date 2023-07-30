@@ -10,6 +10,10 @@ let scale = 1;
 var lastZoomPoint = {x: 0, y: 0};
 var centerPoint = {x:0, y:0}
 var selectedElement = 0;
+var lastReminderWidth = 0;
+var lastReminderHeight = 0;
+var centerX = 0;
+var centerY = 0;
 
 let zIndex = 0;
 let load = 0;
@@ -584,46 +588,93 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
 }
 var focusedX = 0;
 var focusedY = 0;
+
+// function updateFocusedTransform(target, direction, maxScale) {
+//     var focusedScale = scale;
+//     let targetRect = target.getBoundingClientRect();
+//     var targetOffset = getOffset(target);
+//     //we use the same method we did with the zoom, only that now instead of zooming to mouse we want to zoom into the top le
+//     while(focusedScale!=maxScale) {
+//         console.log(target.offsetX);
+//         targetOffset = getOffset(target);
+//         if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
+//             focusedScale *= 1.24;
+//             focusedX += ((targetOffset.left)+(targetRect.width/2)) * focusedScale/1.24 - ((targetOffset.left)+(targetRect.width/2)) * focusedScale;
+//             focusedY += ((targetOffset.top)+(targetRect.height/2)) * focusedScale/1.24 - ((targetOffset.top)+(targetRect.height/2)) * focusedScale;            
+//         }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
+//             focusedScale /= 1.24;
+//             focusedX += ((targetOffset.left)+(targetRect.width/2)) * focusedScale*1.24 - ((targetOffset.left)+(targetRect.width/2)) * focusedScale;
+//             focusedY += ((targetOffset.top)+(targetRect.height/2)) * focusedScale*1.24 - ((targetOffset.top)+(targetRect.height/2)) * focusedScale;
+
+//         }
+//     }
+
+//     //calculate points to center focused elements
+//     var rWidth = window.innerWidth - targetRect.width;//short for reminding width
+//     var rHeight = window.innerHeight - targetRect.height;//short for reminding height
+//     var refGrid = document.getElementById('grid-snap');
+//     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
+//     // var wrapper = document.querySelector('.wrapper-grid');
+    
+//     refGrid.style.transformOrigin = "0 0";
+//     refGrid.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
+//     //you take the remaining width and height and divide it by 2 so from left to right there will be an equal amount of reminding width
+//     // and from top to bottom there will be an equal amount of reminding Height
+//     focusedX += (rWidth/2);
+//     focusedY += (rHeight/2);
+//     console.log('this is x and y ' + focusedX + ' , ' + focusedY);
+//     wrapper.style.transform = `translate(${focusedX}px, ${focusedY}px)`;
+// }
 function updateFocusedTransform(target, direction, maxScale) {
     var focusedScale = scale;
-    let targetRect = target.getBoundingClientRect();
-    //we use the same method we did with the zoom, only that now instead of zooming to mouse we want to zoom into the top le
-    while(focusedScale!=maxScale) {
-        console.log(target.offsetX);
-        if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
-            focusedScale *= 1.24;
-            focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale/1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
-            focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale/1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
-        }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
-            focusedScale /= 1.24;
-            focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale * 1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
-            focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale * 1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
+    var targetRect = target.getBoundingClientRect();
+    var targetOffset = getOffset(target);
+
+    // Save the initial width and height of the targetRect
+    var initialWidth = targetRect.width;
+    var initialHeight = targetRect.height;
+    
+    while(focusedScale != maxScale) {
+        // Calculate the new dimensions of the target after scaling
+        if(direction>0) {
+            var newWidth = initialWidth * focusedScale;
+            var newHeight = initialHeight * focusedScale;
+        }else {
+            var newWidth = initialWidth / focusedScale;
+            var newHeight = initialHeight / focusedScale;
         }
+
+        // Calculate the difference in size from the original dimensions
+        var widthDiff = (newWidth - initialWidth) / 2;
+        var heightDiff = (newHeight - initialHeight) / 2;
+
+        // Subtract the difference from the offset to simulate moving the element to keep it centered
+        var xOffset = targetOffset.left - widthDiff;
+        var yOffset = targetOffset.top - heightDiff;
+
+        if(direction > 0) {
+            focusedScale *= 1.24;
+        } else {
+            focusedScale /= 1.24;
+        }
+        
+        focusedX += xOffset * focusedScale / 1.24 - xOffset * focusedScale;
+        focusedY += yOffset * focusedScale / 1.24 - yOffset * focusedScale;
     }
-    // if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
-    //     focusedScale *= 1.24;
-    //     console.log('this is y ' + focusedY);
-    //     focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale/1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
-    //     focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale/1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
-    // }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
-    //     focusedScale /= 1.24;
-    //     focusedX += ((targetRect.x)+(targetRect.width/2)) * focusedScale * 1.24 - ((targetRect.x)+(targetRect.width/2)) * focusedScale;
-    //     focusedY += ((targetRect.y)+(targetRect.height/2)) * focusedScale * 1.24 - ((targetRect.y)+(targetRect.height/2)) * focusedScale;
-    // }
-    //calculate points to center focused elements
-    var rWidth = window.innerWidth - targetRect.width;//short for reminding width
-    var rHeight = window.innerHeight - targetRect.height;//short for reminding height
+
+    // Calculate points to center focused elements
+    var rWidth = window.innerWidth / 2; // Center of window width
+    var rHeight = window.innerHeight / 2; // Center of window height
     var refGrid = document.getElementById('grid-snap');
     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
-    // var wrapper = document.querySelector('.wrapper-grid');
     
     refGrid.style.transformOrigin = "0 0";
     refGrid.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
-    //you take the remaining width and height and divide it by 2 so from left to right there will be an equal amount of reminding width
-    // and from top to bottom there will be an equal amount of reminding Height
-    // focusedX += (rWidth/2);
-    // focusedY += (rHeight/2);
-    console.log('this is x and y ' + focusedX + ' , ' + focusedY);
+
+    // Move the wrapper to the center and adjust for the element's new size after scaling
+    focusedX = rWidth - (initialWidth * focusedScale / 2) - refGrid.getBoundingClientRect().x;
+    focusedY = rHeight - (initialHeight * focusedScale / 2) - refGrid.getBoundingClientRect().y;
+
     wrapper.style.transform = `translate(${focusedX}px, ${focusedY}px)`;
 }
 
@@ -634,6 +685,7 @@ document.addEventListener('keydown', function(event) {
     }
     event.preventDefault();
     (event.key === 'ArrowRight') ? focusedElement++ : focusedElement--;//if we press right arrow key we got to the next element and if we press the left arrow key we go to the previous element
+    console.log('focusedElement - ' + focusedElement);
     let draggableItems = document.querySelectorAll('.draggable');
     //on evrey right arrow keyboard click we got to the next item of the draggable items increasing the focusedElement by 1
     // so if we reach to a focusedElement that is equal to the amount of them then you would cycle back to the first dragged element
@@ -645,7 +697,7 @@ document.addEventListener('keydown', function(event) {
     }
     let target = draggableItems[focusedElement];
     let targetRect = target.getBoundingClientRect();
-    console.log(target);
+    console.log(draggableItems);
     var direction = 1;
     if((targetRect.width > window.innerWidth) || (targetRect.height > window.innerHeight)) {
         direction = -1;
@@ -653,7 +705,9 @@ document.addEventListener('keydown', function(event) {
     console.log(direction);
     var maxScale = getElementMaxFocusedSize(targetRect.width, targetRect.height, scale, direction);
     console.log(maxScale);
-    updateFocusedTransform(target, direction , maxScale);
+    // updateFocusedTransform(target, direction , maxScale);
+    updateF(target, direction, maxScale);
+    scale = maxScale;
     hideAllCloseButtons();
     let closeButton = this.querySelector('.close-button');
     selectedElement = 0;
@@ -663,3 +717,57 @@ document.addEventListener('keydown', function(event) {
         updateBoundingBox(target);
     }
 });
+
+function getOffset(el) {
+    const rect = el.getBoundingClientRect();
+    const scrollLeft = document.documentElement.scrollLeft;
+    const scrollTop = document.documentElement.scrollTop;
+    return { top: rect.top + scrollTop, left: rect.left + scrollLeft };
+}
+
+function updateF(target, direction, maxScale) {
+    var gridSnap = document.getElementById('grid-snap');
+    var gridRect = gridSnap.getBoundingClientRect();
+    var wrapper = document.getElementsByClassName('wrapper-grid')[0];
+    var targetRect = target.getBoundingClientRect();
+    var scaledWidth = (targetRect.width/scale)*maxScale;
+    var scaledHeight = (targetRect.height/scale)*maxScale;
+    console.log('scale ' + scaledWidth +' ' + scaledHeight);
+    console.log('beforeScale ' + scaledWidth + ' ' + scaledHeight);
+    var reminderWidth = (window.innerWidth - scaledWidth)/2;
+    var reminderHeight = (window.innerHeight - scaledHeight)/2;
+    console.log(targetRect);
+    console.log((targetRect.y/scale)*maxScale);
+    console.log('reminder ' + reminderWidth + ' ' + reminderHeight);
+    console.log('scale vs maxScale ' + scale + ' ' + maxScale);
+    if(centerX===0) {
+
+        centerX = reminderWidth - ((targetRect.x)/scale)*maxScale;
+        centerY = reminderHeight - ((targetRect.y - gridRect.y - lastReminderHeight)/scale)*maxScale - gridRect.y;//we subtract the gridSnap.y since it's intally starts with a y value>0 because we center it on start
+    }else {
+        centerX -= ((targetRect.x)/scale)*maxScale - reminderWidth;
+        centerY -= ((targetRect.y)/scale)*maxScale - reminderHeight;
+    }
+    if(gridRect.x>0) {
+        centerX = reminderWidth - ((targetRect.x-lastReminderWidth)/scale)*maxScale;
+    }
+    else if (scale < maxScale) {
+        console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
+        centerX -= lastReminderWidth;
+        centerY -= lastReminderHeight;
+
+    }
+    if(scale != maxScale) {
+        lastReminderWidth += reminderWidth;
+        lastReminderHeight += reminderHeight;
+    }
+    // if(gridRect.y<)
+    // if(focused) {
+
+    // }
+    console.log('grid snap y ' + gridSnap.getBoundingClientRect().y);
+    console.log('centerP ' + centerX + ' ' + centerY);
+    gridSnap.style.transformOrigin = "0 0";
+    gridSnap.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
+    wrapper.style.transform = `translate(${centerX}px, ${centerY}px)`;
+}

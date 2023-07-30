@@ -1,0 +1,12 @@
+0000000000000000000000000000000000000000 b2096c7c56874c32419358dfb45ab77b54997478 turhtkar <orielsher@gmail.com> 1689882607 +0300	commit (initial): 🚀 first commit
+b2096c7c56874c32419358dfb45ab77b54997478 b2096c7c56874c32419358dfb45ab77b54997478 turhtkar <orielsher@gmail.com> 1689882661 +0300	checkout: moving from master to feature
+b2096c7c56874c32419358dfb45ab77b54997478 b2096c7c56874c32419358dfb45ab77b54997478 turhtkar <orielsher@gmail.com> 1689892510 +0300	checkout: moving from feature to Oriel-Optional
+b2096c7c56874c32419358dfb45ab77b54997478 ef0e19688251f6766823cb965e0c0a6f7c2bc562 turhtkar <orielsher@gmail.com> 1689892648 +0300	commit: Decided to unable drag over top or left to resize
+ef0e19688251f6766823cb965e0c0a6f7c2bc562 7a3e26bff20f143801e94ab70b14838c3f7f22ac turhtkar <orielsher@gmail.com> 1689971687 +0300	commit: Fixed and implemented - drag over top or left to snap back to canvas
+7a3e26bff20f143801e94ab70b14838c3f7f22ac 10e7628c5398ad53ec3a549c4f1d13e3aa39f734 turhtkar <orielsher@gmail.com> 1689977145 +0300	commit: ok, fixed drag over top, now disabled on drag move instead of just drag end
+10e7628c5398ad53ec3a549c4f1d13e3aa39f734 f4790230b0eed6d22f9730f510f3b2247ffc86c7 turhtkar <orielsher@gmail.com> 1690141732 +0300	commit: working on zoom functionality(currently broken)
+f4790230b0eed6d22f9730f510f3b2247ffc86c7 bee47611ecd0d7225173833cd883410f26ca65d7 turhtkar <orielsher@gmail.com> 1690218426 +0300	commit: zoom and pan functionality currently disabled,
+bee47611ecd0d7225173833cd883410f26ca65d7 993065c3fbe7453b00dca68705c3727b49fdcb23 turhtkar <orielsher@gmail.com> 1690330956 +0300	commit: zoom function working, need to track transformation to fix positioning of elements when drag and readd panning
+993065c3fbe7453b00dca68705c3727b49fdcb23 5485945d743a8eb618a4435055e10efd537c5df1 turhtkar <orielsher@gmail.com> 1690403790 +0300	commit: added boundigBox on select
+5485945d743a8eb618a4435055e10efd537c5df1 0732ff267bfeea6c44170de023646d56b819bd6a turhtkar <orielsher@gmail.com> 1690484875 +0300	commit: fixed most bugs
+0732ff267bfeea6c44170de023646d56b819bd6a 4f9b9629150855de4273bd50aa73a9c41178c050 turhtkar <orielsher@gmail.com> 1690487249 +0300	commit: fixed more Bugs
