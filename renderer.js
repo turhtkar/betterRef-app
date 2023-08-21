@@ -21,6 +21,7 @@ let load = 0;
 let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
 let pos = {left: 0, top: 0, right: 0, bottom: 0};
 var isResize = 0;
+var isDragging = false;
 
 
 //Drag and drop img files into the application window to use them
@@ -88,7 +89,7 @@ window.onload = function() {
             lastZoomPoint.x = accx;
             lastZoomPoint.y = accy;
             if(selectedElement != 0) {
-                updateBoundingBox(selectedElement);
+                // updateBoundingBox(selectedElement);
             }
             // translation.x = accx;
             // translation.y = accy;
@@ -104,7 +105,7 @@ window.onload = function() {
         let startPan = { x: 0, y: 0 };
         let accPan = { x: 0, y: 0 };
 
-        refGrid.addEventListener("mousedown", (e) => {
+        wrapperGrid.addEventListener("mousedown", (e) => {
             if (e.button === 1) {  // Check if the middle (wheel) button is pressed
                 isPanning = true;
                 startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
@@ -121,7 +122,7 @@ window.onload = function() {
             }
         });
 
-        refGrid.addEventListener("mousemove", (e) => {
+        wrapperGrid.addEventListener("mousemove", (e) => {
             if (isPanning) {
                 // Calculate the distance moved since the last mousemove event
                 let dx = e.clientX/scale - startPan.x;
@@ -143,8 +144,9 @@ window.onload = function() {
                 lastTransform.y = accPan.y;                
 
                 // update the bounding box
-                if(selectedElement) {
-                    updateBoundingBox(selectedElement);
+                if(selectedElement!=0) {
+                    console.log('selected element is ' + selectedElement);
+                    // updateBoundingBox(selectedElement);
                 }
                 // Reset the start position for the next mousemove event
                 startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
@@ -160,11 +162,26 @@ window.onload = function() {
 
         
         for (let f of event.dataTransfer.files) {
+            
         // Create container for each element
         let container = document.createElement('div');
         container.className = 'draggable container';
         container.style.position = 'relative';
-        container.style.overflow = 'hidden';
+        container.style.overflow = 'visable';
+        // boundingBox.appendChild(container);
+            
+        // Create bounding box
+        let boundingBox = document.createElement('div');
+        boundingBox.id = 'boundingBox';
+        container.appendChild(boundingBox);
+
+        // Add handles to the bounding box
+        const handles = ["tl", "tm", "ml", "tr", "mr", "bl", "bm", "br"];
+        handles.forEach(handle => {
+            let div = document.createElement('div');
+            div.className = `square handle-${handle}`;
+            boundingBox.appendChild(div);
+        });
 
         // Create close button
         let closeButton = document.createElement('button');
@@ -239,6 +256,7 @@ window.onload = function() {
                     ],
                     inertia: true,
                 });
+        
                 container.addEventListener('click', function(event) {
                     event.stopPropagation();
                     hideAllCloseButtons();
@@ -247,7 +265,11 @@ window.onload = function() {
                     if (closeButton) {
                         closeButton.style.display = 'block';
                         selectedElement = event;
-                        updateBoundingBox(event);
+                        let boundingBox = this.querySelector('#boundingBox');
+                        if(boundingBox) {
+                            boundingBox.style.display = "block";
+                        }
+                        // updateBoundingBox(event);
                         console.log('this is where u looking for - ');
                         console.log(event.target.getBoundingClientRect().x);
                         console.log(event.offsetX);
@@ -261,27 +283,33 @@ window.onload = function() {
     };
 }
 
+function hideAllCloseButtons() {
+    let closeButtons = document.querySelectorAll('.close-button');
+    let boundBoxs = document.querySelectorAll("#boundingBox");
+    boundBoxs.forEach(function(boundBox) {
+        boundBox.style.display='none';
+    });
+    closeButtons.forEach(function(button) {
+        button.style.display = 'none';
+        console.log('close button off');
+    });
+}
 // hide close button when click anywhere else on the document
 document.addEventListener('click', function(event) {
     var centerGrid = document.getElementById('grid-snap').getBoundingClientRect();
     centerPoint.x = centerGrid.width/2;
     centerPoint.y = centerGrid.height/2;
-    console.log('this is the center point - ' + centerPoint.x + ' , ' + centerPoint.y);
+    console.log('this is the point you clicked at - ' + event.x + ' , ' + event.y);
     console.log(document.getElementById('grid-snap').getBoundingClientRect());
+    selectedElement=0;
     hideAllCloseButtons();
 });
 
-function hideAllCloseButtons() {
-    let closeButtons = document.querySelectorAll('.close-button');
-    document.getElementById('boundingBox').style.display='none';
-    closeButtons.forEach(function(button) {
-        button.style.display = 'none';
-    });
-}
 
 
 function dragMoveListener(event) {
     var target = event.target;
+    isDragging = true;
     event.target.style.zIndex = 1000;
     if(load===0) {
         console.log('save pos');
@@ -295,6 +323,11 @@ function dragMoveListener(event) {
     }
     var x = (parseFloat(target.getAttribute('data-x')) || 0) + (event.dx/scale);
     var y = (parseFloat(target.getAttribute('data-y')) || 0) + (event.dy/scale);
+    console.log(x + ' this is the current x');
+    console.log((event.dx/scale) + ' this is the (event.dx/scale)');
+    console.log(parseFloat(target.getAttribute('data-x')) + ' this is data X');
+    console.log(event.dx + ' this is the current dx');
+    console.log(event.dy + ' this is the current dy');
     if(y>=0 && x>=0){
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
@@ -303,18 +336,12 @@ function dragMoveListener(event) {
         translation.y = y;
     }
     getOutOfBoundTravel(event);
-    window.requestAnimationFrame(function() {
-        resizeCanvas(event);
-        updateBoundingBox(event);
-    });
 }
 
 function endDragListener(event) {
+    isDragging=false;
     getOutOfBoundTravel(event);
-    window.requestAnimationFrame(function() {
-        resizeCanvas(event);
-        updateBoundingBox(event);
-    });
+    // updateBoundingBox(event);
     // updateBoundingBox(event);
     var textEl = event.target.querySelector('p');
     event.target.style.zIndex = zIndex++;
@@ -328,7 +355,7 @@ function endResizeListener(event) {
     getOutOfBoundTravel(event);
     window.requestAnimationFrame(function() {
         resizeCanvas(event);
-        updateBoundingBox(event);
+        // updateBoundingBox(event);
     });
     // updateBoundingBox(event);
 }
@@ -341,8 +368,11 @@ function getOutOfBoundTravel(event) {
     lastPos.right = (targetRect.right-boundRect.right)/scale;
     lastPos.top = (boundRect.top-targetRect.top)/scale;
     lastPos.bottom = (targetRect.bottom-boundRect.bottom)/scale;
-    console.log(boundRect);
-    console.log(targetRect);
+    if(lastPos.bottom>0 || lastPos.right>0) {
+        resizeCanvas(event);
+    }else {
+        // updateBoundingBox(event);
+    }
 }
 
 function resizeCanvas(event) {
@@ -367,10 +397,9 @@ function resizeCanvas(event) {
     centerPoint.x = boundRect.width/2;
     centerPoint.y = boundRect.height/2;
     document.body.offsetHeight;
-    updateBoundingBox(event);
-    window.requestAnimationFrame(function() {
-        console.log('resize');
-    });
+    if(selectedElement!=0) {
+        // updateBoundingBox(event);
+    }
     // boundingBox.style.transform = 'translate(' + (boundRect.x + translation.x - 7) + 'px, ' + (boundRect.y + translation.y -7) + 'px)';
     // boundBox.style.transform = 'translate( ' + boundBoxX-7 + 'px , ' + boundBoxY-7 + 'px )';
 }
@@ -407,7 +436,7 @@ function resizeMoveListener(event) {
     getOutOfBoundTravel(event);
     window.requestAnimationFrame(function() {
         resizeCanvas(event);
-        updateBoundingBox(event);
+        // updateBoundingBox(event);
     });
 }
 
@@ -421,7 +450,7 @@ interact('.draggable').on('tap', function (event) {
 
     // Show the bounding box for the new selected element
     target.classList.add('selected');
-    updateBoundingBox(event);
+    // updateBoundingBox(event);
     event.preventDefault();
 });
 
@@ -431,13 +460,14 @@ interact('body').on('click', function(event) {
         let previousSelected = document.querySelector('.selected');
         if (previousSelected) {
             previousSelected.classList.remove('selected');
-            let boundingBox = document.getElementById('boundingBox');
+            let boundingBox = document.querySelector('#boundingBox');
             boundingBox.style.display = 'none';
         }
     }
 });
 
 function updateBoundingBox(element) {
+    if(!isDragging) return;
     var targetRect = 0;
     if(element.target) {
         targetRect = element.target.getBoundingClientRect();
@@ -456,7 +486,6 @@ function updateBoundingBox(element) {
     boundingBox.style.top = targetRect.y + 'px';
     boundingBox.style.width = (boundWidth-3) + 'px';
     boundingBox.style.height = (boundHeight-3) + 'px';
-
 }
 
 function savePositions() {
@@ -550,16 +579,16 @@ function createNewNote() {
         });
 }
 
-document.addEventListener('click', function(event) {
-    hideAllCloseButtons();
-});
+// document.addEventListener('click', function(event) {
+//     hideAllCloseButtons();
+// });
 
-function hideAllCloseButtons() {
-    let closeButtons = document.querySelectorAll('.close-button');
-    closeButtons.forEach(function(button) {
-        button.style.display = 'none';
-    });
-}
+// function hideAllCloseButtons() {
+//     let closeButtons = document.querySelectorAll('.close-button');
+//     closeButtons.forEach(function(button) {
+//         button.style.display = 'none';
+//     });
+// }
 
   
 // Listen for the 'create-new-note' event
@@ -596,97 +625,6 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
     }
     return maxScale;
 }
-var focusedX = 0;
-var focusedY = 0;
-
-// function updateFocusedTransform(target, direction, maxScale) {
-//     var focusedScale = scale;
-//     let targetRect = target.getBoundingClientRect();
-//     var targetOffset = getOffset(target);
-//     //we use the same method we did with the zoom, only that now instead of zooming to mouse we want to zoom into the top le
-//     while(focusedScale!=maxScale) {
-//         console.log(target.offsetX);
-//         targetOffset = getOffset(target);
-//         if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
-//             focusedScale *= 1.24;
-//             focusedX += ((targetOffset.left)+(targetRect.width/2)) * focusedScale/1.24 - ((targetOffset.left)+(targetRect.width/2)) * focusedScale;
-//             focusedY += ((targetOffset.top)+(targetRect.height/2)) * focusedScale/1.24 - ((targetOffset.top)+(targetRect.height/2)) * focusedScale;            
-//         }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
-//             focusedScale /= 1.24;
-//             focusedX += ((targetOffset.left)+(targetRect.width/2)) * focusedScale*1.24 - ((targetOffset.left)+(targetRect.width/2)) * focusedScale;
-//             focusedY += ((targetOffset.top)+(targetRect.height/2)) * focusedScale*1.24 - ((targetOffset.top)+(targetRect.height/2)) * focusedScale;
-
-//         }
-//     }
-
-//     //calculate points to center focused elements
-//     var rWidth = window.innerWidth - targetRect.width;//short for reminding width
-//     var rHeight = window.innerHeight - targetRect.height;//short for reminding height
-//     var refGrid = document.getElementById('grid-snap');
-//     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
-//     // var wrapper = document.querySelector('.wrapper-grid');
-    
-//     refGrid.style.transformOrigin = "0 0";
-//     refGrid.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
-//     //you take the remaining width and height and divide it by 2 so from left to right there will be an equal amount of reminding width
-//     // and from top to bottom there will be an equal amount of reminding Height
-//     focusedX += (rWidth/2);
-//     focusedY += (rHeight/2);
-//     console.log('this is x and y ' + focusedX + ' , ' + focusedY);
-//     wrapper.style.transform = `translate(${focusedX}px, ${focusedY}px)`;
-// }
-function updateFocusedTransform(target, direction, maxScale) {
-    var focusedScale = scale;
-    var targetRect = target.getBoundingClientRect();
-    var targetOffset = getOffset(target);
-
-    // Save the initial width and height of the targetRect
-    var initialWidth = targetRect.width;
-    var initialHeight = targetRect.height;
-    
-    while(focusedScale != maxScale) {
-        // Calculate the new dimensions of the target after scaling
-        if(direction>0) {
-            var newWidth = initialWidth * focusedScale;
-            var newHeight = initialHeight * focusedScale;
-        }else {
-            var newWidth = initialWidth / focusedScale;
-            var newHeight = initialHeight / focusedScale;
-        }
-
-        // Calculate the difference in size from the original dimensions
-        var widthDiff = (newWidth - initialWidth) / 2;
-        var heightDiff = (newHeight - initialHeight) / 2;
-
-        // Subtract the difference from the offset to simulate moving the element to keep it centered
-        var xOffset = targetOffset.left - widthDiff;
-        var yOffset = targetOffset.top - heightDiff;
-
-        if(direction > 0) {
-            focusedScale *= 1.24;
-        } else {
-            focusedScale /= 1.24;
-        }
-        
-        focusedX += xOffset * focusedScale / 1.24 - xOffset * focusedScale;
-        focusedY += yOffset * focusedScale / 1.24 - yOffset * focusedScale;
-    }
-
-    // Calculate points to center focused elements
-    var rWidth = window.innerWidth / 2; // Center of window width
-    var rHeight = window.innerHeight / 2; // Center of window height
-    var refGrid = document.getElementById('grid-snap');
-    var wrapper = document.getElementsByClassName('wrapper-grid')[0];
-    
-    refGrid.style.transformOrigin = "0 0";
-    refGrid.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
-
-    // Move the wrapper to the center and adjust for the element's new size after scaling
-    focusedX = rWidth - (initialWidth * focusedScale / 2) - refGrid.getBoundingClientRect().x;
-    focusedY = rHeight - (initialHeight * focusedScale / 2) - refGrid.getBoundingClientRect().y;
-
-    wrapper.style.transform = `translate(${focusedX}px, ${focusedY}px)`;
-}
 
 document.addEventListener('keydown', function(event) {
     if((event.key !== 'ArrowRight') && (event.key !== 'ArrowLeft')) {
@@ -707,54 +645,41 @@ document.addEventListener('keydown', function(event) {
     }
     let target = draggableItems[focusedElement];
     let targetRect = target.getBoundingClientRect();
-    console.log(targetRect);
     var direction = 1;
     if((targetRect.width > window.innerWidth) || (targetRect.height > window.innerHeight)) {
         direction = -1;
-        console.log(window.innerWidth);
-        console.log(window.innerHeight);
     }
     console.log(direction);
     var maxScale = getElementMaxFocusedSize(targetRect.width, targetRect.height, scale, direction);
-    console.log(maxScale);
-    // updateFocusedTransform(target, direction , maxScale);
-    updateF(target, direction, maxScale);
+    updateF(target, maxScale);
     scale = maxScale;
     hideAllCloseButtons();
-    let closeButton = this.querySelector('.close-button');
+    let closeButton = target.querySelector('.close-button');
     selectedElement = 0;
     if (closeButton) {
         closeButton.style.display = 'block';
         selectedElement = target;
-        updateBoundingBox(target);
+        selectedElement.style.zIndex = ++zIndex;
+        let boundBox = selectedElement.querySelector('#boundingBox');
+        boundBox.style.display = 'block';
+        // updateBoundingBox(target);
     }
 });
 
-function getOffset(el) {
-    const rect = el.getBoundingClientRect();
-    const scrollLeft = document.documentElement.scrollLeft;
-    const scrollTop = document.documentElement.scrollTop;
-    return { top: rect.top + scrollTop, left: rect.left + scrollLeft };
-}
 
-function updateF(target, direction, maxScale) {
-    savePositions();
+function updateF(target, maxScale) {
+    // savePositions();
     var gridSnap = document.getElementById('grid-snap');
     var gridRect = gridSnap.getBoundingClientRect();
     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
     var targetRect = target.getBoundingClientRect();
+    const boundingBox = document.querySelector('#boundingBox');
     var scaledWidth = (targetRect.width/scale)*maxScale;
     var scaledHeight = (targetRect.height/scale)*maxScale;
-    console.log('scale ' + scaledWidth +' ' + scaledHeight);
-    console.log('beforeScale ' + scaledWidth + ' ' + scaledHeight);
+
     var reminderWidth = (window.innerWidth - scaledWidth)/2;
     var reminderHeight = (window.innerHeight - scaledHeight)/2;
-    console.log(targetRect);
-    console.log((targetRect.y/scale)*maxScale);
-    console.log('reminder ' + reminderWidth + ' ' + reminderHeight);
-    console.log('scale vs maxScale ' + scale + ' ' + maxScale);
-        // centerX = (reminderWidth) - (((targetRect.x/scale)*maxScale));
-        // centerY = ((lastTransform.y) + reminderHeight) - ((targetRect.y - gridRect.y - lastReminderHeight)/scale)*maxScale - gridRect.y;//we subtract the gridSnap.y since it's intally starts with a y value>0 because we center it on start
+
     if((lastTransform.x==0 && lastTransform.y==0)) {
 
         centerX = reminderWidth - ((targetRect.x)/scale)*maxScale;
@@ -762,48 +687,34 @@ function updateF(target, direction, maxScale) {
     }else {
         console.log('1');
         centerX = (reminderWidth) + ((((lastTransform.x-targetRect.x)/scale)*maxScale));
-        // centerX = ((lastTransform.x) + reminderWidth) - (((targetRect.x/scale)*maxScale));
-        centerY -= ((targetRect.y)/scale)*maxScale - reminderHeight;
+        centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
     }
-    if(gridRect.x>0) {
-        console.log('2');
-        centerX = reminderWidth - ((targetRect.x-lastReminderWidth)/scale)*maxScale;
-    }
-    if(gridRect.y>0 && lastTransform.y!=0) {
-        console.log('3');
-        centerY = reminderHeight + (lastTransform.y-lastReminderHeight);
-    }
-    if(((((targetRect.y-gridRect.y)/scale)*maxScale) + reminderHeight + scaledHeight)>window.innerHeight && gridRect.y>0) {
+    // if(gridRect.x>0) {
+    //     console.log('2');
+    //     centerX = reminderWidth - ((targetRect.x-lastReminderWidth)/scale)*maxScale;
+    // }
+    if(((((targetRect.y-gridRect.y)/scale)*maxScale) + reminderHeight + scaledHeight)>window.innerHeight) {
         console.log('4');
         centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
     }
-    // else if (scale < maxScale && scale!=1) {
-    //     console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
-    //     console.log('logs - xBefore : ' + targetRect.x);
-    //     console.log('logs - scaledX : ' + (targetRect.x/scale)*maxScale*-1);
-    //     console.log('logs - lastTransform : ' + (lastTransform.x));        
-    //     centerX = ((lastTransform.x) + reminderWidth) - (((targetRect.x/scale)*maxScale));
-    //     centerY = ((lastTransform.y) + reminderHeight) - (((targetRect.y/scale)*maxScale));
-    //     // let tempScale = maxScale/scale;
-    //     // centerX -= (lastReminderWidth*tempScale);
-    //     // centerY -= (lastReminderHeight*tempScale);
-
+    // if(((((targetRect.x-gridRect.x)/scale)*maxScale) + reminderWidth + scaledWidth)>window.innerWidth) {
+    //     console.log('4');
+    //     centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
+    // }
+    // if(gridRect.y>0 && lastTransform.y!=0) {
+    //     console.log('3');
+    //     centerY = reminderHeight + (lastTransform.y-lastReminderHeight);
     // }
 
+
     if(scale != maxScale) {
-        console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
-        // centerX-=lastTransform.x;
         lastReminderWidth = reminderWidth;
         lastReminderHeight = reminderHeight;
     }
-    // if(gridRect.y<)
-    // if(focused) {
 
-    // }
     lastTransform.x = centerX;
     lastTransform.y = centerY;
-    console.log('grid snap y ' + gridSnap.getBoundingClientRect().y);
-    console.log('centerP ' + centerX + ' ' + centerY);
+
     gridSnap.style.transformOrigin = "0 0";
     gridSnap.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
     wrapper.style.transform = `translate(${centerX}px, ${centerY}px)`;

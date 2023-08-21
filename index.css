@@ -2,7 +2,8 @@
     position: relative;
     /* resize: both; */
     left: 0;
-    overflow: auto;
+    overflow: visible;
+    /* overflow: auto; */
 }
 
 
@@ -70,6 +71,8 @@ html {
 .container {
     width: fit-content;
     height: fit-content;
+    display: flex;
+    /* border: 2px solid #5ea0e5; */
 }
 
 textarea {
@@ -136,6 +139,7 @@ input[type=text]:focus, textarea:focus {
     align-items: center;
     position: absolute;
     transform: translate(0px, 0px);
+    justify-content: center;
 }
 .square {
     border: 2px solid #5ea0e5;
@@ -146,11 +150,25 @@ input[type=text]:focus, textarea:focus {
 }
 #boundingBox {
     border: 2px solid #5ea0e5;
-    width: 500px;
-    height: 500px;
+    /* width: 500px;
+    height: 500px; */
+    height: -webkit-fill-available;
+    width: -webkit-fill-available;
     position: absolute;
     pointer-events:none;
     display: none;
+    z-index: 100000;
+    overflow: visible;
+}
+.boundingBox1 {
+    border: 2px solid #5ea0e5;
+    /* width: 500px;
+    height: 500px; */
+    height: max-content;
+    width: max-content;
+    position: absolute;
+    pointer-events:none;
+    display: flex;
     z-index: 100000;
 }
 .right-bound {
@@ -158,4 +176,48 @@ input[type=text]:focus, textarea:focus {
     width: 0.01px;
     position: absolute;
     left: 100%;
+}
+
+.handle-tl {
+    top: -8px;
+    left: -8px;
+}
+
+.handle-tm {
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.handle-ml {
+    top: 50%;
+    left: -8px;
+    transform: translateY(-50%);
+}
+
+.handle-tr {
+    top: -7px;
+    right: -7px;
+}
+
+.handle-mr {
+    top: 50%;
+    right: -7px;
+    transform: translateY(-50%);
+}
+
+.handle-bl {
+    bottom: -7px;
+    left: -8px;
+}
+
+.handle-bm {
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.handle-br {
+    bottom: -7px;
+    right: -7px;
 }
