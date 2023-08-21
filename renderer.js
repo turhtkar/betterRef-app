@@ -4,6 +4,7 @@ const { webFrame } = require('electron');
 
 
 let zoomFactor = 1.24; // Keep track of the zoom level
+var lastTransform = {x: 0 , y:0};
 var focusedElement = -1; // Keep track of the focused element
 let translation = {x: 0, y: 0};
 let scale = 1;
@@ -70,18 +71,20 @@ window.onload = function() {
             e.preventDefault();
             if (e.deltaY < 0) {
                 scale *= 1.24;
-                accx += e.offsetX * scale/1.24 - e.offsetX * scale;
-                accy += e.offsetY * scale/1.24 - e.offsetY * scale;
+                accx = lastTransform.x + e.offsetX * scale/1.24 - e.offsetX * scale;
+                accy = lastTransform.y + e.offsetY * scale/1.24 - e.offsetY * scale;
             } else {
                 scale /= 1.24;
-                accx += e.offsetX * scale * 1.24 - e.offsetX * scale;
-                accy += e.offsetY * scale * 1.24 - e.offsetY * scale;
+                accx = lastTransform.x + e.offsetX * scale * 1.24 - e.offsetX * scale;
+                accy = lastTransform.y + e.offsetY * scale * 1.24 - e.offsetY * scale;
             }
 
             refGrid.style.transformOrigin = "0 0";
             e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
             wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
             //for easy access into the wrapperGrid.style.Transform translate Points
+            lastTransform.x = accx;
+            lastTransform.y = accy;
             lastZoomPoint.x = accx;
             lastZoomPoint.y = accy;
             if(selectedElement != 0) {
@@ -130,12 +133,14 @@ window.onload = function() {
                 const y = parseFloat(matrixValues[5]);
 
                 // Accumulate the total distance moved for panning
-                accPan.x = dx+x;
-                accPan.y = dy+y;
+                accPan.x = (dx*scale)+x;
+                accPan.y = (dy*scale)+y;
 
                 // Apply the pan transformation
                 console.log('accPan.x - ' + startPan.x);
                 wrapperGrid.style.transform = `translate(${accPan.x}px, ${accPan.y}px)`;
+                lastTransform.x = accPan.x;
+                lastTransform.y = accPan.y;                
 
                 // update the bounding box
                 if(selectedElement) {
@@ -569,6 +574,10 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
     var currHeight = targetHeight;
     var maxScale = currScale;
     // target.getBoundingClientRect().width
+    console.log('this is the curr width - ' + currWidth);
+    console.log('this is the curr height - ' + currHeight);
+    console.log('this is the window width - ' + windowWidth); 
+    console.log('this is the window height - ' + windowHight);          
     if(direction>0) {//if the intial element size is smaller then the windowSize we multiply by the zoom factor, like we zoom in
         while(((currWidth*zoomFactor) <= windowWidth) && ((currHeight*zoomFactor) <=  windowHight)) {
             console.log(currWidth);
@@ -577,12 +586,13 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
             maxScale*=zoomFactor;
         }
     }else {//if the intial element size is bigger then the windowSize we divide by the zoom factor, like we zoom out
-        while(((currWidth/zoomFactor) <= windowWidth) && ((currHeight/zoomFactor) <=  windowHight)) {
+        while(((currWidth) > windowWidth) || ((currHeight) >  windowHight)) {
+            console.log(maxScale);
             maxScale/=zoomFactor;
             currWidth/=zoomFactor;
             currHeight/=zoomFactor;
-
         }
+        
     }
     return maxScale;
 }
@@ -697,10 +707,12 @@ document.addEventListener('keydown', function(event) {
     }
     let target = draggableItems[focusedElement];
     let targetRect = target.getBoundingClientRect();
-    console.log(draggableItems);
+    console.log(targetRect);
     var direction = 1;
     if((targetRect.width > window.innerWidth) || (targetRect.height > window.innerHeight)) {
         direction = -1;
+        console.log(window.innerWidth);
+        console.log(window.innerHeight);
     }
     console.log(direction);
     var maxScale = getElementMaxFocusedSize(targetRect.width, targetRect.height, scale, direction);
@@ -726,6 +738,7 @@ function getOffset(el) {
 }
 
 function updateF(target, direction, maxScale) {
+    savePositions();
     var gridSnap = document.getElementById('grid-snap');
     var gridRect = gridSnap.getBoundingClientRect();
     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
@@ -740,31 +753,55 @@ function updateF(target, direction, maxScale) {
     console.log((targetRect.y/scale)*maxScale);
     console.log('reminder ' + reminderWidth + ' ' + reminderHeight);
     console.log('scale vs maxScale ' + scale + ' ' + maxScale);
-    if(centerX===0) {
+        // centerX = (reminderWidth) - (((targetRect.x/scale)*maxScale));
+        // centerY = ((lastTransform.y) + reminderHeight) - ((targetRect.y - gridRect.y - lastReminderHeight)/scale)*maxScale - gridRect.y;//we subtract the gridSnap.y since it's intally starts with a y value>0 because we center it on start
+    if((lastTransform.x==0 && lastTransform.y==0)) {
 
         centerX = reminderWidth - ((targetRect.x)/scale)*maxScale;
         centerY = reminderHeight - ((targetRect.y - gridRect.y - lastReminderHeight)/scale)*maxScale - gridRect.y;//we subtract the gridSnap.y since it's intally starts with a y value>0 because we center it on start
     }else {
-        centerX -= ((targetRect.x)/scale)*maxScale - reminderWidth;
+        console.log('1');
+        centerX = (reminderWidth) + ((((lastTransform.x-targetRect.x)/scale)*maxScale));
+        // centerX = ((lastTransform.x) + reminderWidth) - (((targetRect.x/scale)*maxScale));
         centerY -= ((targetRect.y)/scale)*maxScale - reminderHeight;
     }
     if(gridRect.x>0) {
+        console.log('2');
         centerX = reminderWidth - ((targetRect.x-lastReminderWidth)/scale)*maxScale;
     }
-    else if (scale < maxScale) {
-        console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
-        centerX -= lastReminderWidth;
-        centerY -= lastReminderHeight;
-
+    if(gridRect.y>0 && lastTransform.y!=0) {
+        console.log('3');
+        centerY = reminderHeight + (lastTransform.y-lastReminderHeight);
     }
+    if(((((targetRect.y-gridRect.y)/scale)*maxScale) + reminderHeight + scaledHeight)>window.innerHeight && gridRect.y>0) {
+        console.log('4');
+        centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
+    }
+    // else if (scale < maxScale && scale!=1) {
+    //     console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
+    //     console.log('logs - xBefore : ' + targetRect.x);
+    //     console.log('logs - scaledX : ' + (targetRect.x/scale)*maxScale*-1);
+    //     console.log('logs - lastTransform : ' + (lastTransform.x));        
+    //     centerX = ((lastTransform.x) + reminderWidth) - (((targetRect.x/scale)*maxScale));
+    //     centerY = ((lastTransform.y) + reminderHeight) - (((targetRect.y/scale)*maxScale));
+    //     // let tempScale = maxScale/scale;
+    //     // centerX -= (lastReminderWidth*tempScale);
+    //     // centerY -= (lastReminderHeight*tempScale);
+
+    // }
+
     if(scale != maxScale) {
-        lastReminderWidth += reminderWidth;
-        lastReminderHeight += reminderHeight;
+        console.log('this is the last reminder ' + lastReminderWidth + ' ' + lastReminderHeight);
+        // centerX-=lastTransform.x;
+        lastReminderWidth = reminderWidth;
+        lastReminderHeight = reminderHeight;
     }
     // if(gridRect.y<)
     // if(focused) {
 
     // }
+    lastTransform.x = centerX;
+    lastTransform.y = centerY;
     console.log('grid snap y ' + gridSnap.getBoundingClientRect().y);
     console.log('centerP ' + centerX + ' ' + centerY);
     gridSnap.style.transformOrigin = "0 0";

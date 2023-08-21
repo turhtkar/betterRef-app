@@ -38,6 +38,7 @@ body {
     overflow: hidden;
     transition: all 0.1s;
     position: relative;
+    margin: 0px;
     /* margin: 10%; */
 }
 
