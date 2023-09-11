@@ -221,3 +221,157 @@ input[type=text]:focus, textarea:focus {
     bottom: -7px;
     right: -7px;
 }
+.player {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+.player__controls {
+    display: flex;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    transform: translateY(100%) translateY(-5px);
+    transition: all .3s;
+    flex-wrap: wrap;
+    background: rgba(0,0,0,0.1);
+    cursor: pointer;
+    align-items: center;
+  }
+  
+  .player:hover .player__controls {
+    transform: translateY(0) translateY(0px);
+  }
+  
+  .player:hover .progress.vidPause {
+    height: 15px;
+    transition: height 0.2 ease-in-out;
+  }
+  
+  .player__controls > * {
+    flex: 1;
+  }
+  
+  /* .progress {
+    flex: 10;
+    position: relative;
+    display: flex;
+    flex-basis: 100%;
+    height: 5px;
+    transition: height 0.3s;
+    background: rgba(0,0,0,0.5);
+    cursor: ew-resize;
+  }
+  
+  .progress__filled {
+    width: 50%;
+    background: #ffc600;
+    flex: 0;
+    flex-basis: 50%;
+    transition: flex-basis 0.2s ease-out; 
+  } */
+
+  /* Styling for the progress bar */
+.progress {
+    width: 100%;
+    height: 7px;
+    appearance: none; 
+    background: rgba(100, 100, 100, .5);
+    border: none;
+    position: relative;
+    transition: height 0.2 ease-in-out;
+    /* transition: value 0.2s ease-out; */
+}
+.progress::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: calc(100% - var(--preview-position) * 100%);
+    background-color: rgb(150, 150, 150);
+    display: none;
+}
+.progress:hover::before {
+    display: block;
+}
+.progress.scrubbing::before {
+    display: none;
+}
+
+.progress::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: calc(100% - var(--progress-position) * 100%);
+    background-color: #ffc600;
+}
+
+/* progress[value]::-webkit-progress-value {
+    background: #ffc600;
+    transition: width 1s linear;
+}
+
+progress[value]::-moz-progress-bar {
+    background: #ffc600;
+} */
+  
+  /* unholy css to style input type="range" */
+  
+  input[type=range] {
+    -webkit-appearance: none;
+    background: transparent;
+    width: 100%;
+    margin: 0 5px;
+  }
+  
+  input[type=range]:focus {
+    outline: none;
+  }
+  
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0), 0 0 1px rgba(13, 13, 13, 0);
+    background: rgba(255,255,255,0.8);
+    border-radius: 1.3px;
+    border: 0.2px solid rgba(1, 1, 1, 0);
+  }
+  
+  input[type=range]::-webkit-slider-thumb {
+    height: 15px;
+    width: 15px;
+    border-radius: 50px;
+    background: #ffc600;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -3.5px;
+    box-shadow:0 0 2px rgba(0,0,0,0.2);
+  }
+  
+  input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #bada55;
+  }
+  
+  input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0), 0 0 1px rgba(13, 13, 13, 0);
+    background: #ffffff;
+    border-radius: 1.3px;
+    border: 0.2px solid rgba(1, 1, 1, 0);
+  }
+  
+  input[type=range]::-moz-range-thumb {
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(13, 13, 13, 0);
+    height: 15px;
+    width: 15px;
+    border-radius: 50px;
+    background: #ffc600;
+    cursor: pointer;
+  }

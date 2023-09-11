@@ -22,6 +22,7 @@ let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
 let pos = {left: 0, top: 0, right: 0, bottom: 0};
 var isResize = 0;
 var isDragging = false;
+var currVid = 0;
 
 
 //Drag and drop img files into the application window to use them
@@ -198,7 +199,9 @@ window.onload = function() {
 
             if (f.type.startsWith('video/')) {
                 console.log('video');
+                let player = document.createElement('div');
                 let video = document.createElement('video');
+                player.className = "player";
                 video.src = f.path;
                 video.width = 320;
                 video.autoplay = true;
@@ -209,7 +212,52 @@ window.onload = function() {
                 video.style.objectFit = 'fill';
                 video.style.width = '100%';
                 video.style.height = '100%';
-                container.appendChild(video);// Append the video to it's container
+
+                // Add the timeupdate event listener to this video
+                video.addEventListener('timeupdate', handleProgress);
+                // After adding the event listener for timeupdate, add one for play as well:
+                // video.addEventListener('play', () => startProgress(video));
+
+                player.appendChild(video);
+                // container.appendChild(video);// Append the video to it's container
+
+                // Create controls container
+                let controls = document.createElement('div');
+                controls.className = 'player__controls';
+
+                // // Create progress container
+                // let progress = document.createElement('div');
+                // progress.className = 'progress';
+                // let progressFilled = document.createElement('div');
+                // progressFilled.className = 'progress__filled';
+                // progress.appendChild(progressFilled);
+                // controls.appendChild(progress);  // Append progress to controls
+                
+
+                // Create progress bar
+
+                let progressBar = document.createElement('div');
+                progressBar.className = 'progress';
+                // progressBar.setAttribute('value', '0');
+                // progressBar.setAttribute('max', '100');
+
+                //TimeLineScrubbingEvents
+                progressBar.addEventListener("mousemove", handleTimelineUpdate);
+                progressBar.addEventListener("mousedown", toggleScrubbing);
+                document.addEventListener("mouseup", e => {
+                if (isScrubbing) toggleScrubbing(e);
+                })
+                document.addEventListener("mousemove", e => {
+                if (isScrubbing) handleTimelineUpdate(e);
+                })
+
+                controls.appendChild(progressBar);  // Append progress bar to controls
+
+                // Append the controls div to the main player
+                player.appendChild(controls);
+
+                // Finally, append the entire player to your container
+                container.appendChild(player);
             }
             else if (f.type.startsWith('image/')) {
                 console.log('File(s) you dragged here: ', f.path);
@@ -228,6 +276,7 @@ window.onload = function() {
             // make the new image draggable and resizable
             interact('.draggable')
                 .draggable({
+                    ignoreFrom: '.vidPause',
                     inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
@@ -242,11 +291,11 @@ window.onload = function() {
                 .resizable({
                     edges: { left: true, right: true, bottom: true, top: true },
                     // preserveAspectRatio: false,
-                    margin: 10,
-                    listeners: { move: resizeMoveListener, end: endResizeListener },
+                    // margin: 10,
+                    inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
-                            // restriction: 'parent',
+                            restriction: 'parent',
                             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
                             endOnly: true
                         }),
@@ -254,7 +303,8 @@ window.onload = function() {
                             min: { width: 50, height: 50 },
                         }),
                     ],
-                    inertia: true,
+                    listeners: { move: resizeMoveListener, end: endResizeListener },
+                    ignoreFrom: '.vidPause',
                 });
         
                 container.addEventListener('click', function(event) {
@@ -451,6 +501,13 @@ interact('.draggable').on('tap', function (event) {
     // Show the bounding box for the new selected element
     target.classList.add('selected');
     // updateBoundingBox(event);
+
+    //play/pause video if the target is played
+    const foundVideo = event.currentTarget.querySelector('video');
+    if (foundVideo) {
+        currVid = foundVideo;
+        togglePlayPause(event);
+    }
     event.preventDefault();
 });
 
@@ -719,3 +776,103 @@ function updateF(target, maxScale) {
     gridSnap.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
     wrapper.style.transform = `translate(${centerX}px, ${centerY}px)`;
 }
+
+
+//video player functionality
+const videos = document.querySelectorAll('video');
+
+//VIDEO PROGRESS BAR: TIME TO WIDTH
+const handleProgress = (event) => {
+    const video = event.target;
+    const progressBar = video.parentElement.querySelector('.progress');
+    const percent = video.currentTime / video.duration
+    progressBar.parentElement.style.setProperty("--progress-position", percent)
+    
+}
+
+let isScrubbing = false
+let wasPaused
+function toggleScrubbing(e) {
+    e.preventDefault();
+    const progressBar = e.target;
+    const foundVideo = progressBar.parentElement.parentElement.querySelector('video');
+    const video = foundVideo || currVid;
+    if (foundVideo) {
+        currVid = foundVideo;
+    }
+    const rect = progressBar.getBoundingClientRect();
+    const percent = (Math.min(Math.max(0, e.x - rect.x), rect.width) / rect.width);
+    isScrubbing = (e.buttons & 1) === 1;
+    video.classList.toggle("scrubbing", isScrubbing);
+    if (isScrubbing) {
+        progressBar.classList.add('scrubbing');
+        // wasPaused = video.paused;
+        // console.log('scrub');
+        // video.pause();
+    } else {
+        progressBar.classList.remove('scrubbing');
+        video.currentTime = percent * video.duration;
+        // console.log('no scrub');
+        // console.log(video.currentTime)
+        // if (!wasPaused) video.play();
+    }
+
+    handleTimelineUpdate(e)
+}
+
+function handleTimelineUpdate(e) {
+    const progressBar = e.target;
+    const foundVideo = progressBar.parentElement.parentElement.querySelector('video');
+    const video = foundVideo || currVid;
+    if (foundVideo) {
+        currVid = foundVideo;
+    }
+    const rect = progressBar.getBoundingClientRect();
+    const percent = (Math.min(Math.max(0, e.x - rect.x), rect.width) / rect.width);
+
+    // const previewImgNumber = Math.max(
+    //     1,
+    //     Math.floor((percent * video.duration) / 10)
+    // )
+    // const previewImgSrc = `assets/previewImgs/preview${previewImgNumber}.jpg`
+    // previewImg.src = previewImgSrc
+    progressBar.parentElement.style.setProperty("--preview-position", percent);
+    console.log('white');
+
+
+    if (isScrubbing) {
+        e.preventDefault();
+        // thumbnailImg.src = previewImgSrc
+        progressBar.parentElement.style.setProperty("--progress-position", percent)
+    }
+}
+
+function togglePlayPause(event) {
+    const foundVideo = event.currentTarget.querySelector('video');
+    var progressBar = event.target.querySelector('.progress');
+    const video = foundVideo || currVid;
+    if (foundVideo) {
+        currVid = foundVideo;
+    }
+    if (video.paused) {
+        video.play();
+
+        progressBar = video.parentElement.querySelector('.progress');
+        progressBar.classList.remove('vidPause');
+        progressBar.style.height = '7px';
+
+    } else {
+        video.pause();
+        progressBar = video.parentElement.querySelector('.progress');
+        progressBar.classList.add('vidPause');
+        progressBar.style.height = '15px';
+        
+    }
+}
+//VIDEO PROGRESS BAR: WIDTH TO TIME
+// const scrub = e => {
+
+//     // video.currentTime = video.duration / (e.target.style.flexBasis/100);
+//     const scrubTime = (e.offsetX / progress.offsetWidth) * video.duration;
+//     video.currentTime = scrubTime;
+//   }
