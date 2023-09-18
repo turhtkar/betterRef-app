@@ -23,13 +23,35 @@ let pos = {left: 0, top: 0, right: 0, bottom: 0};
 var isResize = 0;
 var isDragging = false;
 var currVid = 0;
+var videoData = {startTime: 0, endTime: 0};
+let isModalOpen = false;
+let runVid = false;
 
 
+function getOrCreateGrid() {
+    let refGrid = document.getElementById('grid-snap');
+    let wrapperGrid = document.querySelector('.wrapper-grid');
+
+    if(!refGrid) {
+        refGrid = document.createElement('div');
+        wrapperGrid = document.createElement('div');
+        wrapperGrid.className = 'wrapper-grid';
+        refGrid.id = 'grid-snap';
+        wrapperGrid.appendChild(refGrid);
+        document.body.appendChild(wrapperGrid);
+    }
+
+    return { refGrid, wrapperGrid };
+}
 //Drag and drop img files into the application window to use them
 window.onload = function() {
     
     let dropZone = document.getElementById('drop_zone');
     
+    document.ondragover = (event) => {
+        event.preventDefault();
+        dropZone.style.zIndex=100000;
+    }
     dropZone.ondragover = (event) => {
         event.preventDefault();
         return false;
@@ -42,13 +64,9 @@ window.onload = function() {
 
     dropZone.ondrop = (event) => {
         event.preventDefault();
-        let refGrid = document.createElement('div');
-        let wrapperGrid = document.createElement('div');
-        wrapperGrid.className = 'wrapper-grid';
-        refGrid.id = 'grid-snap';
-        // document.body.appendChild(refGrid);
-        wrapperGrid.appendChild(refGrid);
-        document.body.appendChild(wrapperGrid);
+        console.log('nig');
+        
+        const { refGrid, wrapperGrid } = getOrCreateGrid();
         //Zoom on mouse wheel event
         let accx = 0, accy = 0;
 
@@ -198,66 +216,79 @@ window.onload = function() {
         container.appendChild(closeButton);
 
             if (f.type.startsWith('video/')) {
-                console.log('video');
-                let player = document.createElement('div');
-                let video = document.createElement('video');
-                player.className = "player";
-                video.src = f.path;
-                video.width = 320;
-                video.autoplay = true;
-                video.loop = true;
-                video.muted = true;
-                // video.className = 'draggable';
-                video.style.top = ' 0 px';
-                video.style.objectFit = 'fill';
-                video.style.width = '100%';
-                video.style.height = '100%';
-
-                // Add the timeupdate event listener to this video
-                video.addEventListener('timeupdate', handleProgress);
-                // After adding the event listener for timeupdate, add one for play as well:
-                // video.addEventListener('play', () => startProgress(video));
-
-                player.appendChild(video);
-                // container.appendChild(video);// Append the video to it's container
-
-                // Create controls container
-                let controls = document.createElement('div');
-                controls.className = 'player__controls';
-
-                // // Create progress container
-                // let progress = document.createElement('div');
-                // progress.className = 'progress';
-                // let progressFilled = document.createElement('div');
-                // progressFilled.className = 'progress__filled';
-                // progress.appendChild(progressFilled);
-                // controls.appendChild(progress);  // Append progress to controls
-                
-
-                // Create progress bar
-
-                let progressBar = document.createElement('div');
-                progressBar.className = 'progress';
-                // progressBar.setAttribute('value', '0');
-                // progressBar.setAttribute('max', '100');
-
-                //TimeLineScrubbingEvents
-                progressBar.addEventListener("mousemove", handleTimelineUpdate);
-                progressBar.addEventListener("mousedown", toggleScrubbing);
-                document.addEventListener("mouseup", e => {
-                if (isScrubbing) toggleScrubbing(e);
-                })
-                document.addEventListener("mousemove", e => {
-                if (isScrubbing) handleTimelineUpdate(e);
-                })
-
-                controls.appendChild(progressBar);  // Append progress bar to controls
-
-                // Append the controls div to the main player
-                player.appendChild(controls);
-
-                // Finally, append the entire player to your container
-                container.appendChild(player);
+                showTrimModal(f.path).then(() => {
+                    //stop execution here until I confirm trim or close modal
+                    console.log('video');
+                    let player = document.createElement('div');
+                    let video = document.createElement('video');
+                    player.className = "player";
+                    video.src = f.path;
+                    video.width = 320;
+                    video.autoplay = true;
+                    video.loop = true;
+                    video.muted = true;
+                    // video.className = 'draggable';
+                    video.style.top = ' 0 px';
+                    video.style.objectFit = 'fill';
+                    video.style.width = '100%';
+                    video.style.height = '100%';
+                    // Add the timeupdate event listener to this video
+                    video.setAttribute('startTime', videoData.startTime);
+                    video.setAttribute('endTime', videoData.endTime);
+                    video.addEventListener('timeupdate', handleProgress);
+                    // After adding the event listener for timeupdate, add one for play as well:
+                    // video.addEventListener('play', () => startProgress(video));
+                    // video.addEventListener('play', () => {
+                    //     playVideoOnce(video);
+                    //     // if(!runVid) {
+                    //     //     video.currentTime = video.getAttribute('startTime');
+                    //     //     videoData.startTime = 0;
+                    //     //     videoData.endTime = 0;
+                    //     //     runVid=true;
+                    //     // }
+                    // }, {once : true});
+                    
+                    player.appendChild(video);
+                    // container.appendChild(video);// Append the video to it's container
+                    
+                    // Create controls container
+                    let controls = document.createElement('div');
+                    controls.className = 'player__controls';
+                    
+                    // // Create progress container
+                    // let progress = document.createElement('div');
+                    // progress.className = 'progress';
+                    // let progressFilled = document.createElement('div');
+                    // progressFilled.className = 'progress__filled';
+                    // progress.appendChild(progressFilled);
+                    // controls.appendChild(progress);  // Append progress to controls
+                    
+                    
+                    // Create progress bar
+                    
+                    let progressBar = document.createElement('div');
+                    progressBar.className = 'progress';
+                    // progressBar.setAttribute('value', '0');
+                    // progressBar.setAttribute('max', '100');
+                    
+                    //TimeLineScrubbingEvents
+                    progressBar.addEventListener("mousemove", handleTimelineUpdate);
+                    progressBar.addEventListener("mousedown", toggleScrubbing);
+                    document.addEventListener("mouseup", e => {
+                        if (isScrubbing) toggleScrubbing(e);
+                    })
+                    document.addEventListener("mousemove", e => {
+                        if (isScrubbing) handleTimelineUpdate(e);
+                    })
+                    
+                    controls.appendChild(progressBar);  // Append progress bar to controls
+                    
+                    // Append the controls div to the main player
+                    player.appendChild(controls);
+                    
+                    // Finally, append the entire player to your container
+                    container.appendChild(player);
+                });
             }
             else if (f.type.startsWith('image/')) {
                 console.log('File(s) you dragged here: ', f.path);
@@ -295,7 +326,7 @@ window.onload = function() {
                     inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
-                            restriction: 'parent',
+                            // restriction: 'parent',
                             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
                             endOnly: true
                         }),
@@ -328,7 +359,10 @@ window.onload = function() {
             }
 
         // Hide the drop zone
-        dropZone.style.display = 'none';
+        dropZone.style.opacity = '0';
+        dropZone.style.width= '100%';
+        dropZone.style.height= '100%';
+        dropZone.style.zIndex = 0;
         return false;
     };
 }
@@ -359,6 +393,7 @@ document.addEventListener('click', function(event) {
 
 function dragMoveListener(event) {
     var target = event.target;
+    var wrapper = document.querySelector('.wrapper-grid');
     isDragging = true;
     event.target.style.zIndex = 1000;
     if(load===0) {
@@ -391,17 +426,22 @@ function dragMoveListener(event) {
 function endDragListener(event) {
     isDragging=false;
     getOutOfBoundTravel(event);
-    // updateBoundingBox(event);
-    // updateBoundingBox(event);
-    var textEl = event.target.querySelector('p');
-    event.target.style.zIndex = zIndex++;
-    textEl && (textEl.textContent = 'moved a distance of ' +
-        (Math.sqrt(Math.pow(event.pageX - event.x0, 2) +
-            Math.pow(event.pageY - event.y0, 2) | 0))
-            .toFixed(2) + 'px');
 }
 function endResizeListener(event) {
+    let { target, rect } = event;
     isResize=0;
+    let x = (parseFloat(target.getAttribute('data-x')) || 0);
+    let y = (parseFloat(target.getAttribute('data-y')) || 0);
+    if(x<0 || y<0) {
+        if(x<0) {
+            x=0.1;
+        }else {
+            y=0.1;
+        }
+        target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        target.setAttribute('data-x', x);
+        target.setAttribute('data-y', y);
+    }
     getOutOfBoundTravel(event);
     window.requestAnimationFrame(function() {
         resizeCanvas(event);
@@ -417,6 +457,7 @@ function getOutOfBoundTravel(event) {
     lastPos.left = (boundRect.x-targetRect.x)/scale;
     lastPos.right = (targetRect.right-boundRect.right)/scale;
     lastPos.top = (boundRect.top-targetRect.top)/scale;
+    console.log(lastPos.top);
     lastPos.bottom = (targetRect.bottom-boundRect.bottom)/scale;
     if(lastPos.bottom>0 || lastPos.right>0) {
         resizeCanvas(event);
@@ -470,19 +511,27 @@ function resizeMoveListener(event) {
     let x = (parseFloat(target.getAttribute('data-x')) || 0);
     let y = (parseFloat(target.getAttribute('data-y')) || 0);
 
-    target.style.width = rect.width/scale + 'px';
-    target.style.height = rect.height/scale + 'px';
     target.style.top = "0px";
-
-    x += event.deltaRect.left;
-    y += event.deltaRect.top;
     
-    translation.x = x;
-    translation.y = y;
-
-    target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-    target.setAttribute('data-x', x);
-    target.setAttribute('data-y', y);
+    // x += event.deltaRect.left;
+    // y += event.deltaRect.top;
+        
+    if(x>=0 && y>=0) {
+        console.log('this is y\n'+y);
+        x += event.deltaRect.left;
+        y += event.deltaRect.top;
+        if(x>=0) {
+            target.style.width = rect.width/scale + 'px';
+        }
+        if(y>=0) {
+            target.style.height = rect.height/scale + 'px';
+        }
+        target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        target.setAttribute('data-x', x);
+        target.setAttribute('data-y', y);
+        translation.x = x;
+        translation.y = y;
+    }
     getOutOfBoundTravel(event);
     window.requestAnimationFrame(function() {
         resizeCanvas(event);
@@ -785,7 +834,14 @@ const videos = document.querySelectorAll('video');
 const handleProgress = (event) => {
     const video = event.target;
     const progressBar = video.parentElement.querySelector('.progress');
-    const percent = video.currentTime / video.duration
+    if (video.currentTime >= video.getAttribute('endTime')) {
+        video.currentTime = video.getAttribute('startTime');
+    }
+    if(video.currentTime <= video.getAttribute('startTime')) {
+        video.currentTime = video.getAttribute('startTime');
+    }
+    // const percent = video.currentTime / video.duration
+    const percent = (video.currentTime-video.getAttribute('startTime')) / (video.getAttribute('endTime')-video.getAttribute('startTime'));
     progressBar.parentElement.style.setProperty("--progress-position", percent)
     
 }
@@ -811,10 +867,9 @@ function toggleScrubbing(e) {
         // video.pause();
     } else {
         progressBar.classList.remove('scrubbing');
-        video.currentTime = percent * video.duration;
-        // console.log('no scrub');
-        // console.log(video.currentTime)
-        // if (!wasPaused) video.play();
+        var b = parseFloat(video.getAttribute('startTime'));
+        var a = parseFloat(percent * (video.getAttribute('endTime')-video.getAttribute('startTime'))).toFixed(4)
+        video.currentTime = parseFloat(a) + b;
     }
 
     handleTimelineUpdate(e)
@@ -837,8 +892,6 @@ function handleTimelineUpdate(e) {
     // const previewImgSrc = `assets/previewImgs/preview${previewImgNumber}.jpg`
     // previewImg.src = previewImgSrc
     progressBar.parentElement.style.setProperty("--preview-position", percent);
-    console.log('white');
-
 
     if (isScrubbing) {
         e.preventDefault();
@@ -849,16 +902,19 @@ function handleTimelineUpdate(e) {
 
 function togglePlayPause(event) {
     const foundVideo = event.currentTarget.querySelector('video');
-    var progressBar = event.target.querySelector('.progress');
+    var progressBar = event.currentTarget.querySelector('.progress');
     const video = foundVideo || currVid;
     if (foundVideo) {
         currVid = foundVideo;
     }
-    if (video.paused) {
+    if (video.paused && (event.target!=progressBar)) {
+        console.log(event.currentTarget);
+        console.log(progressBar);
         video.play();
 
         progressBar = video.parentElement.querySelector('.progress');
         progressBar.classList.remove('vidPause');
+        console.log(progressBar.classList);
         progressBar.style.height = '7px';
 
     } else {
@@ -869,6 +925,256 @@ function togglePlayPause(event) {
         
     }
 }
+
+// function openModalWithVideo(videoPath) {
+//     let modal = document.getElementById("videoTrimModal");
+//     let closeModalBtn = modal.querySelector(".close");
+//     let videoElement = modal.querySelector("#trimVideoPlayer");
+  
+//     videoElement.src = videoPath;
+//     modal.style.display = "block";
+  
+//     closeModalBtn.onclick = function() {
+//       modal.style.display = "none";
+//     }
+  
+//     // When the user clicks anywhere outside of the modal, close it
+//     window.onclick = function(event) {
+//       if (event.target == modal) {
+//         modal.style.display = "none";
+//       }
+//     }
+//   }
+
+  function createTrimModalForVideo(videoPath) {
+    let modal = document.createElement('div');
+    modal.classList.add('modal');
+
+    let modalContent = `
+        <div class="modal-content">
+            <span class="close" onclick="closeTrimModal(event)">&times;</span>
+            <video muted autoplay loop src="${videoPath}"></video>
+            <div class="range_container">
+                <div class="time-roller">
+                    <!-- Time roller will be generated here dynamically -->
+                </div>
+                <div class="range-sliders">
+                    <span class="slider-track"></span>
+                    <input type="range" class="fromInput" id="startTrim" min="0" max="100" value="0" step="0.1">
+                    <input type="range" class="toInput" id="endTrim" min="0" max="100" value="100" step="0.1">
+                    <div class="time-tooltip" id="timeTooltip">00:00</div>
+                </div>
+                <div class="video-frames">
+                    <!-- Video frames will be generated here dynamically -->
+                </div>
+            </div>
+            <div class="confirm-button-container">
+                <button id="confirmTrimButton" onclick="confirmTrim(event)">Confirm trim</button>
+            </div>
+        </div>
+    `;
+
+    modal.innerHTML = modalContent;
+    document.body.appendChild(modal);
+
+    return modal;
+}
+let handleModalClosure;
+function showTrimModal(videoPath, callback) {
+    return new Promise((resolve, reject) => {
+        handleModalClosure = () => {
+            resolve();  // This assigns the resolve function for future use.
+        };
+        let modal = createTrimModalForVideo(videoPath);
+
+        isModalOpen = true;
+        
+        modal.style.display = "block";
+        modal.callback = callback;
+
+        let videoElem = modal.querySelector('video');
+        let startSlider = modal.querySelector('#startTrim');
+        let endSlider = modal.querySelector('#endTrim');
+        let sliderContainer = modal.querySelector('.range-sliders');
+        const timeRoller = document.querySelector(".time-roller");
+        const videoFrames = document.querySelector(".video-frames");
+        const timeTooltip = modal.querySelector("#timeTooltip");
+        const rangeTrack = modal.querySelector(".slider-track");
+        var startTime = 0;
+        var endTime = videoElem.duration;
+
+        
+        const rangeWidth = startSlider.offsetWidth;
+        
+        
+        videoElem.onloadedmetadata = function() {
+            startSlider.max = videoElem.duration;
+            endSlider.max = videoElem.duration;
+            videoData.startTime = 0;
+            videoData.endTime = videoElem.duration;
+            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${0}%, rgba(50, 100, 254, 0.5) ${0}%, rgba(50, 100, 254, 0.5) ${100}%, rgba(218, 218, 229, 0.5) ${100}%)`;
+            generateTimeRollerAndFrames(videoElem.duration);
+        };
+        
+        // Function to generate time roller and video frames based on video duration
+        async function generateTimeRollerAndFrames(videoDuration) {
+            const numberOfTicks = 10; // Adjust the number of ticks as needed
+            const timeIncrement = videoDuration / numberOfTicks;
+
+            // Clear existing content
+            timeRoller.innerHTML = '';
+            videoFrames.innerHTML = '';
+
+            for (let i = 0; i <= numberOfTicks; i++) {
+                const time = (i * timeIncrement).toFixed(2); // Format time to two decimal places
+                const timeLabel = document.createElement("span");
+                timeLabel.textContent = '| ' +time;
+                timeLabel.style.left = ((10*i)+0.5) + '%';
+                timeRoller.appendChild(timeLabel);
+
+                const videoFrame = document.createElement("div");
+                videoFrame.classList.add("video-frame");
+                const frameDataURL = await captureFrame(videoElem, time);
+                videoFrame.style.backgroundImage = `url(${frameDataURL})`;
+                videoFrames.appendChild(videoFrame);
+            }
+        }
+        
+
+
+        startSlider.addEventListener('input', function() {
+            if (parseFloat(startSlider.value) >= parseFloat(endSlider.value)) {
+                endSlider.value = parseFloat(startSlider.value) + 0.1;
+            }
+            
+            //color the selected range
+            var percent1 = (startSlider.value / videoElem.duration) * 100;
+            var percent2 = (endSlider.value / videoElem.duration) * 100;
+            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent2}%, rgba(218, 218, 229, 0.5) ${percent2}%)`;
+            //set the rangeTrack
+            rangeTrack.style.left = percent1+'%';
+            rangeTrack.style.width = ((100-percent1)-(100-percent2))+'%';
+            //set the video start time
+            startTime = startSlider.value;
+        });
+
+        endSlider.addEventListener('input', function() {
+            if (parseFloat(endSlider.value) <= parseFloat(startSlider.value)) {
+                startSlider.value = parseFloat(endSlider.value) - 0.1;
+            }
+            //color the selected range
+            var percent1 = (startSlider.value / videoElem.duration) * 100;
+            var percent2 = (endSlider.value / videoElem.duration) * 100;
+            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent2}%, rgba(218, 218, 229, 0.5) ${percent2}%)`;
+            //set the rangeTrack
+            rangeTrack.style.left = percent1+'%';
+            rangeTrack.style.width = ((100-percent1)-(100-percent2))+'%';
+            //set the video end time
+            endTime = endSlider.value;
+        });
+        //Display TimeToolTip on thumb move
+        [startSlider, endSlider].forEach(slider => {
+            slider.addEventListener('mousemove', function(e) {
+                const value = parseFloat(slider.value);
+                const percent = (value - parseFloat(slider.min)) / (parseFloat(slider.max) - parseFloat(slider.min));
+                const leftOffset = percent * slider.offsetWidth;
+                
+                // Position the tooltip
+                timeTooltip.style.left = `${leftOffset}px`;
+                timeTooltip.textContent = secondsToTime(value);
+                
+                // Reposition tooltip if it goes out of the container's bounds
+                if (leftOffset + timeTooltip.offsetWidth / 2 > sliderContainer.offsetWidth) {
+                    timeTooltip.style.transform = `translateX(-100%) translateY(-100%) translateY(-10px)`;
+                } else if (leftOffset - timeTooltip.offsetWidth / 2 < 0) {
+                    timeTooltip.style.transform = `translateX(0%) translateY(-100%) translateY(-10px)`;
+                } else {
+                    timeTooltip.style.transform = `scale(0.9) translateX(-50%) translateY(-100%) translateY(-10px)`;
+                }
+                if (isThumbHovered(slider)) {
+                    timeTooltip.style.opacity = '1';
+                    timeTooltip.style.transform = 'scale(1) translateY(-100%) translateY(-10px);';
+                }else {
+                    timeTooltip.style.transform = 'scale(0.7) translateY(-100%) translateY(-10px)'; /* Starting scale */
+                    timeTooltip.style.opacity = '0';
+                }
+            });
+        });
+        videoElem.addEventListener('timeupdate', ()=>{
+            if (videoElem.currentTime >= endTime) {
+                videoElem.currentTime = startTime;
+            }
+            if(videoElem.currentTime <= startTime) {
+                videoElem.currentTime = startTime;
+            }
+        })
+
+        // When the user clicks anywhere outside of the modal, close it
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeTrimModal(event);
+            }
+        }
+    });
+    //resolve the promise to keep execution of the code
+
+}
+
+function closeTrimModal(event) {
+    let modal = event.target.closest('.modal');
+    if (modal) {
+        modal.style.display = "none";
+        isModalOpen = false;
+        modal.remove(); // Optionally remove the modal from the DOM entirely
+        if (typeof modal.callback === 'function') {
+            modal.callback();
+        }
+        // Then, ensure the promise from `showTrimModal` is resolved.
+        handleModalClosure();
+    }
+}
+
+function confirmTrim(event) {
+    let modal = event.target.closest('.modal');
+    let startSlider = modal.querySelector('#startTrim');
+    let endSlider = modal.querySelector('#endTrim');
+
+    videoData.startTime = startSlider.value;
+    videoData.endTime = endSlider.value;
+
+    closeTrimModal(event);
+}
+function playVideoOnce(video) {
+    video.currentTime = video.getAttribute('startTime');
+    // video.play();
+    video.removeEventListener("play", playVideoOnce);
+}
+function secondsToTime(seconds) {
+    let minutes = Math.floor(seconds / 60);
+    let secs = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+function isThumbHovered(slider) {
+    const computedStyle = window.getComputedStyle(slider, '::-webkit-slider-thumb');
+    const boxShadow = computedStyle.boxShadow;
+    console.log('this is the thumb color \n ' + computedStyle.boxShadow);
+    return boxShadow !== '0 0 0 1px #C6C6C6;';
+}
+function captureFrame(videoElement, time) {
+    return new Promise((resolve) => {
+        videoElement.currentTime = time;
+        videoElement.onseeked = function() {
+            let canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL());  // Convert the frame to an image URL
+        };
+    });
+}
+
+
 //VIDEO PROGRESS BAR: WIDTH TO TIME
 // const scrub = e => {
 

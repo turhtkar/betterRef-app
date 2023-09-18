@@ -6,6 +6,18 @@
     </head>
     <div id="drop_zone">Drop files here</div>
 <body>
+    <div id="videoTrimModal" class="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <video id="trimVideoPlayer" controls></video>
+          <!-- You can put other elements needed for trimming here, like range sliders -->
+          <div class="range-sliders">
+            <input type="range" class="slider" id="startTrim" min="0" max="100" value="0">
+            <input type="range" class="slider" id="endTrim" min="0" max="100" value="100">
+          </div>
+          <button onclick="confirmTrim(event)">Confirm</button>
+        </div>
+    </div>
     <div id="boundingBox">
         <div class="square handle-tl" style="top: -8px; left: -8px;"></div>
         <div class="square handle-tm" style="top: -8px; left: 50%;"></div>

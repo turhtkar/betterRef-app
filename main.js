@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 // const { enable } = require('@electron/remote/main');
 const { MenuItem } = require('electron/main');
 const electronReload = require('electron-reload');
+let trimModalResolver;  // A function to resolve the promise once the modal is closed
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -66,3 +67,5 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+
