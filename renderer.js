@@ -631,17 +631,41 @@ function createNewNote() {
     
     const textarea = document.createElement('textarea');
     textarea.className = 'textbox';
+    textarea.textContent = 'Note';
+    textarea.addEventListener('input', function() {
+        // growFont(textarea);
+        const parentContainer = this.parentElement;
+    
+        // While content overflows vertically, increase container width
+        while (this.scrollHeight > this.offsetHeight) {
+            const currentWidth = parseFloat(window.getComputedStyle(parentContainer).width);
+            parentContainer.style.width = (currentWidth + 10) + "px"; // increment by 10px, adjust as needed
+        }
+    
+        // If content overflows horizontally, increase container width
+        while (this.scrollWidth > this.offsetWidth) {
+            const currentWidth = parseFloat(window.getComputedStyle(parentContainer).width);
+            parentContainer.style.width = (currentWidth + 10) + "px"; // increment by 10px, adjust as needed
+        }
+    });
+    // textarea.style.fontSize='100%';
     
     const closeButton = document.createElement('button');
     closeButton.className = 'close-button';
     closeButton.textContent = String.fromCodePoint(0x1F534);
     closeButton.style.display = 'none'; // initially, the close button is hidden
+    const fontButton = document.createElement('button');
+    fontButton.className = 'font-Select';
+    fontButton.textContent = 'T';
+    fontButton.style.direction ='none';
+
     
     closeButton.addEventListener('click', function (event) {
         event.stopPropagation(); // prevent the container click event from firing
         textbox.remove();
     });
-  
+
+    textbox.appendChild(fontButton);
     textbox.appendChild(closeButton);
     textbox.appendChild(textarea);
     
@@ -671,7 +695,8 @@ function createNewNote() {
         .resizable({
             edges: { left: true, right: true, bottom: true, top: true },
             margin: 10,
-            listeners: { move: resizeMoveListener },
+            preserveAspectRatio: true,
+            listeners: { move: [resizeMoveListener], end:[endResizeListener,growFont] },
             modifiers: [
                 interact.modifiers.restrictEdges({
                     outer: 'parent',
@@ -683,6 +708,54 @@ function createNewNote() {
             ],
             inertia: true,
         });
+}
+
+function growFont(event) {
+    var target = event.target;
+    var textarea = target.querySelector('.textbox');
+    // if(event.className='textbox') {
+    //     textarea=event;
+    //     console.log(event.className)
+    // }else {
+    //     textarea = target.querySelector('.textbox');
+    // }
+        
+    // Increase font size until content might overflow
+    for (let i = 10; i < 500; i++) { // max limit of 200px, can be adjusted
+        textarea.style.fontSize = i + "px";
+
+        if (textarea.scrollHeight > textarea.offsetHeight || textarea.scrollWidth > textarea.offsetWidth) {
+            textarea.style.fontSize = (i - 1) + "px";
+            break;
+        }
+    }
+    // If content overflows vertically, increase container width until it fits
+    while (textarea.scrollHeight > textarea.offsetHeight) {
+        const currentWidth = parseFloat(window.getComputedStyle(target).width);
+        target.style.width = (currentWidth + 10) + "px"; // increment by 10px, adjust as needed
+    }
+    
+    // Adjust font size again after container width adjustment
+    while (textarea.scrollHeight > textarea.offsetHeight || textarea.scrollWidth > textarea.offsetWidth) {
+        const currentSize = parseInt(window.getComputedStyle(textarea).fontSize);
+        textarea.style.fontSize = (currentSize - 1) + "px";
+    }
+    adjustAfterResize(event);
+}
+function adjustAfterResize(event) {
+    const textarea = event.target.querySelector('.textbox');
+    
+    // Adjust font size to prevent overflow
+    while (textarea.scrollHeight > textarea.offsetHeight || textarea.scrollWidth > textarea.offsetWidth) {
+        const currentSize = parseInt(window.getComputedStyle(textarea).fontSize);
+        textarea.style.fontSize = (currentSize - 1) + "px";
+    }
+    
+    // If content still overflows vertically after font size adjustment, increase container width
+    while (textarea.scrollHeight > textarea.offsetHeight) {
+        const currentWidth = parseFloat(window.getComputedStyle(event.target).width);
+        event.target.style.width = (currentWidth + 10) + "px"; 
+    }
 }
 
 // document.addEventListener('click', function(event) {
@@ -802,6 +875,9 @@ function updateF(target, maxScale) {
     if(((((targetRect.y-gridRect.y)/scale)*maxScale) + reminderHeight + scaledHeight)>window.innerHeight) {
         console.log('4');
         centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
+    }
+    if(((((targetRect.x-gridRect.x)/scale)*maxScale) + reminderWidth + scaledWidth)>window.innerWidth) {
+        centerX = reminderWidth + (((((targetRect.x-gridRect.x)/scale)*maxScale) - targetRect.x)*-1) + (lastTransform.x-targetRect.x) - gridRect.x;
     }
     // if(((((targetRect.x-gridRect.x)/scale)*maxScale) + reminderWidth + scaledWidth)>window.innerWidth) {
     //     console.log('4');
