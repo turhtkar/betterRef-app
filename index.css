@@ -90,7 +90,7 @@ textarea {
     resize: none;
 }
 
-input[type=text]:focus, textarea:focus {
+textarea:focus {
     box-shadow: 0px 1px 1px #f2dede inset, 0px 0px 8px #dff0d8;
     outline: none;
     padding-top: 24px !important;
@@ -123,7 +123,8 @@ input[type=text]:focus, textarea:focus {
     position: absolute;
     left: -30px;
     color: #7A7A7A;
-    border: solid 1px black;
+    border: solid 1px #242222;
+    border-radius: 15%;
     width: 38px;
     height: 42px;
     font-size: 36px;
@@ -483,13 +484,13 @@ progress[value]::-moz-progress-bar {
     -webkit-box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe;
   }
   
-  input[type="number"] {
+  /* input[type="number"] {
     color: #8a8383;
     width: 50px;
     height: 30px;
     font-size: 20px;
     border: none;
-  }
+  } */
   
   input[type=number]::-webkit-inner-spin-button, 
   input[type=number]::-webkit-outer-spin-button {  
@@ -622,4 +623,200 @@ input[type="range"]::-webkit-slider-thumb:hover + .time-tooltip{
 #confirmTrimButton:active {
     background-color: rgba(30, 80, 234, 1); /* A slightly darker blue for the active state */
     transform: scale(1); /* Return the button to its original size */
+}
+
+.spectrum-wrapper {
+    font-family: roboto;
+    font-size: 42px;
+    color: white;
+    cursor: crosshair;
+    position: relative;
+    user-select: none;
+    outline: 3px solid black;
+    grid-column: 1 / 3;
+    grid-row: 1;
+    margin: 2px;
+  }
+  .spectrum-layer {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(
+      to right,
+      rgb(255 0 0),
+      rgb(255 255 0),
+      rgb(0 255 0),
+      rgb(0 255 255),
+      rgb(0 0 255),
+      rgb(255 0 255),
+      rgb(255 0 0)
+    );
+  }
+  
+  .saturation-white {
+    background: -webkit-linear-gradient(to top, rgba(255, 255, 255, 0), #fff);
+    background: linear-gradient(to top, rgba(255, 255, 255, 0), #fff);
+    position: absolute;
+    width: 100%;
+    height: 50%;
+    top: 0px;
+    left: 0px;
+  }
+  .saturation-black {
+  background: -webkit-linear-gradient(to bottom, rgba(0, 0, 0, 0), #000);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), #000);
+  position: absolute;
+  width: 100%;
+  height: 50%;
+  bottom: 0px;
+  left: 0px;
+}
+
+  .modal-color {
+    /* display: none; */
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    font-family: roboto;
+    font-size: 42px;
+  }
+  .modal-content-color {
+    font-family: roboto;
+    font-size: 42px;
+    padding: 20px;
+    background-color: #17171E;
+    border: 1px solid #888;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    color: white;
+    gap: 5px;
+    position: relative;
+    /* margin: 5vh auto; */
+    width: 80vw;
+    max-width: 328px;
+    height: 60vh;
+    max-height: 560px;
+    display: grid;
+    grid-template-rows: 55% auto 1fr 10% 5%; /* Spectrum, Color Slider, Color Details, Opacity */
+    grid-template-columns: 1fr 1fr; 
+  }
+  .color-slider.color-slider {
+    width: 100%;
+    height: 20px;
+    background-size: 100% 100%;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    grid-column: 1 / 3;
+    grid-row: 2;
+    position: relative!important;
+}
+.color-slider.color-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 25px;
+    background: white;
+    border: 1px solid black;
+    cursor: pointer;
+}
+.color-slider.color-slider::-moz-range-thumb {
+    width: 15px;
+    height: 25px;
+    background: white;
+    border: 1px solid black;
+    cursor: pointer;
+}
+.color-pointer {
+    position: absolute;
+    top: -5px; /* adjust to position it right above the click point */
+    left: 0;
+    width: 10px;
+    height: 10px;
+    background-color: black; /* or any other contrasting color */
+    border-radius: 50%;
+    transform: translateX(-50%); /* to center the pointer on the click point */
+    display: none; /* initially hidden */
+}
+.CurrentColorBlock {
+    grid-column: 1;
+    /* Style for CurrentColorBlock if any */
+}
+.color-inputs {
+    grid-column: 2;
+    display: grid;
+    grid-template-rows: repeat(3, 1fr);
+}
+.color-row {
+    display: grid;
+    grid-template-columns: repeat(2, auto 1fr);
+    gap: 10px; /* Or any other gap value you'd like between input fields */
+    font-size: 22px;
+
+}
+
+.opacity-range {
+    grid-column: 1 / 3;
+    grid-row: 4;
+    font-size: 18px;
+    font-family: roboto;
+    /* Add additional styling as needed */
+}
+.red, .green, .blue, .hue, .saturation, .lightness {
+    width: 1.5vw;
+    background: transparent;
+    color: white;
+    height: 1vh;
+    outline: none;
+    font-size: 20px;
+}
+.color-details {
+    grid-column: 1 / 3; /* spans both columns */
+    grid-row: 3; /* Below the color-slider */
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Split between CurrentColorBlock and color-inputs */
+    gap:10px;
+}
+.color-row label {
+    white-space: nowrap;
+}
+#opacity {
+    width: 50%;
+    position: relative;
+    background-color: #404046;
+    height: 2px;
+}
+#opacity::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 25px;
+    background: white;
+    border: 1px solid black;
+    cursor: pointer;
+}
+#opacity::-moz-range-thumb {
+    width: 15px;
+    height: 25px;
+    background: white;
+    border: 1px solid black;
+    cursor: pointer;
+}
+#opacityVal {
+    width: 1.5vw;
+    background: transparent;
+    color: white;
+    height: 1vh;
+    outline: none;
+    font-size: 20px;
+}
+.colorButtons {
+    grid-column: 1 / 3; /* spans both columns */
+    grid-row: 5; /* Below the color-slider */
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Split between CurrentColorBlock and color-inputs */
+    gap:10px;
 }

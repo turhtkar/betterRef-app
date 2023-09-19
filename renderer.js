@@ -656,7 +656,10 @@ function createNewNote() {
     closeButton.style.display = 'none'; // initially, the close button is hidden
     const fontButton = document.createElement('button');
     fontButton.className = 'font-Select';
-    fontButton.textContent = 'T';
+    fontButton.innerHTML = 'T';
+    fontButton.onclick = (event) => {
+        showColorPickModal(event);
+    };
     fontButton.style.direction ='none';
 
     
@@ -1248,6 +1251,463 @@ function captureFrame(videoElement, time) {
             resolve(canvas.toDataURL());  // Convert the frame to an image URL
         };
     });
+}
+
+
+//Color code
+function showColorPickModal(event) {
+    modal = createColorPickModal();
+    const getSpectrumWrapper = () => modal.querySelector(".spectrum-wrapper");
+    const opacity = modal.querySelector("#opacity");
+    const previusColor = window.getComputedStyle(event.target).getPropertyValue('color');
+    
+    opacity.addEventListener('input', () => {
+        const opacityVal = opacity.parentElement.querySelector('opacityVal');
+        opacityVal.value = opacity.value;
+    });
+
+    const spectrumRanges = [
+    { from: [255, 0, 0], to: [255, 255, 0] },
+    { from: [255, 255, 0], to: [0, 255, 0] },
+    { from: [0, 255, 0], to: [0, 255, 255] },
+    { from: [0, 255, 255], to: [0, 0, 255] },
+    { from: [0, 0, 255], to: [255, 0, 255] },
+    { from: [255, 0, 255], to: [255, 0, 0] }
+    ];
+
+    const findColorValue = (from, to, leftDistRatio) => {
+    return Math.round(from + (to - from) * leftDistRatio);
+    };
+
+    const findRgbFromMousePosition = (event) => {
+    const { left, width } = getSpectrumWrapper().getBoundingClientRect();
+    const leftDistance = Math.min(Math.max(event.clientX - left, 0), width - 1);
+    const rangeWidth = width / spectrumRanges.length;
+    const includedRange = Math.floor(leftDistance / rangeWidth);
+    const leftDistRatio = ((leftDistance % rangeWidth) / rangeWidth).toFixed(2);
+    const { from, to } = spectrumRanges[includedRange];
+    return {
+        r: findColorValue(from[0], to[0], leftDistRatio),
+        g: findColorValue(from[1], to[1], leftDistRatio),
+        b: findColorValue(from[2], to[2], leftDistRatio)
+    };
+    };
+
+    const darken = (color, ratio) => Math.round((1 - ratio) * color);
+    const whiten = (color, ratio) => Math.round(color + (255 - color) * ratio);
+    const adjustSaturation = ({ r, g, b }) => (ratio, adjustmentFn) => {
+    return {
+        r: adjustmentFn(r, ratio),
+        g: adjustmentFn(g, ratio),
+        b: adjustmentFn(b, ratio)
+    };
+    };
+
+    const saturate = (rgb, e) => {
+    const { top, height } = getSpectrumWrapper().getBoundingClientRect();
+    const topDistance = Math.min(Math.max(e.clientY - top, 0), height);
+    const topDistRatio = (topDistance / height).toFixed(2);
+    if (topDistRatio > 0.5) {
+        const darknessRatio = (topDistRatio - 0.5) / 0.5;
+        return adjustSaturation(rgb)(darknessRatio, darken);
+    }
+    if (topDistRatio < 0.5) {
+        const whitenessRatio = (0.5 - topDistRatio) / 0.5;
+        return adjustSaturation(rgb)(whitenessRatio, whiten);
+    }
+    return rgb;
+    };
+
+    const rgbToHex = (r, g, b) => {
+    const toHex = (rgb) => {
+        let hex = Number(rgb).toString(16);
+        if (hex.length < 2) {
+        hex = `0${hex}`;
+        }
+        return hex;
+    };
+    const red = toHex(r);
+    const green = toHex(g);
+    const blue = toHex(b);
+    return `#${red}${green}${blue}`;
+    };
+
+    let isMouseDown = false;
+
+    getSpectrumWrapper().addEventListener("mousedown", (e) => {
+        isMouseDown = true;
+        getSpectrumWrapper().addEventListener("mousemove", onColorSelect);
+    });
+    
+    getSpectrumWrapper().addEventListener("click", (e) =>{
+        let rgb = findRgbFromMousePosition(e);
+        let { r, g, b } = saturate(rgb, e);
+        console.log("Selected RGB:", r, g, b);
+        let hexValue = rgbToHex(r, g, b);
+        let [h, s, l] = rgbToHsl(r,g,b);
+
+
+        // Display the RGB and hex values
+        modal.querySelector(".red").value = r;
+        modal.querySelector(".green").value = g;
+        modal.querySelector(".blue").value = b;
+        modal.querySelector(".hue").value = h;
+        modal.querySelector(".saturation").value = s;
+        modal.querySelector(".lightness").value = l;
+        
+        //set color Block with previous and current color.
+        setColor(`rgba(${r},${g},${b},${opacity.value})`, previusColor, modal);
+        // document.querySelector(".hex").innerText = hexValue;
+
+        // Position and display the marker
+        const colorPointer = modal.querySelector(".color-pointer");
+        const xPosition = e.clientX - getSpectrumWrapper().getBoundingClientRect().left;
+        colorPointer.style.left = `${xPosition}px`;
+        colorPointer.style.display = "block";
+        setColorSlider({r,g,b}, previusColor, modal, event);
+        updateFontColor(event,opacity,modal);
+    });
+    // Logic that's executed during mouse drag.
+    function onColorSelect(e) {
+        if (!isMouseDown) return;
+
+        let rgb = findRgbFromMousePosition(e);
+        let { r, g, b } = saturate(rgb, e);
+        console.log("Selected RGB:", r, g, b);
+        let hexValue = rgbToHex(r, g, b);
+        let [h, s, l] = rgbToHsl(r,g,b);
+
+
+        // Display the RGB and hex values
+        modal.querySelector(".red").value = r;
+        modal.querySelector(".green").value = g;
+        modal.querySelector(".blue").value = b;
+        modal.querySelector(".hue").value = h;
+        modal.querySelector(".saturation").value = s;
+        modal.querySelector(".lightness").value = l;
+        
+        //set color Block with previous and current color.
+        setColor(`rgba(${r},${g},${b},${opacity.value})`, previusColor, modal);
+        // document.querySelector(".hex").innerText = hexValue;
+
+        // Position and display the marker
+        const colorPointer = modal.querySelector(".color-pointer");
+        const xPosition = e.clientX - getSpectrumWrapper().getBoundingClientRect().left;
+        colorPointer.style.left = `${xPosition}px`;
+        colorPointer.style.display = "block";
+        setColorSlider({r,g,b}, previusColor, modal, event);
+        updateFontColor(event,opacity,modal);
+    }
+
+    getSpectrumWrapper().addEventListener("mouseup", () => {
+        isMouseDown = false;
+        
+        // Remove mousemove event listener when mouse is released.
+        getSpectrumWrapper().removeEventListener("mousemove", onColorSelect);
+    });
+    //update 
+    const updateRgbColors = (r, g, b, opacity) => {
+        //update color block
+        // var { r, g, b } = saturate(rgb, e);
+        setColor(`rgba(${r},${g},${b},${opacity})`, previusColor, modal);
+        // let hexValue = rgbToHex(r, g, b);
+        let [h, s, l] = rgbToHsl(r,g,b);
+
+        // update the HSL values
+        modal.querySelector(".hue").value = h;
+        modal.querySelector(".saturation").value = s;
+        modal.querySelector(".lightness").value = l;
+        // update dark to light range
+        setColorSlider({r,g,b}, previusColor, modal, event);
+        moveColorPointer(h,s,l);
+    };
+    //update by HSL
+    const updateHslColors = (h, s, l, opacity) => {
+        //update color block
+        var h = (parseFloat(h) || 0) / 360;
+        let {r, g, b} = hslToRgb(h,s,l);
+        setColor(`rgba(${r},${g},${b},${opacity})`, previusColor, modal);
+        // let hexValue = rgbToHex(r, g, b);
+
+        // update the RGB values
+        modal.querySelector(".red").value = r;
+        modal.querySelector(".green").value = g;
+        modal.querySelector(".blue").value = b;
+        // update dark to light range
+        setColorSlider({r,g,b}, previusColor, modal, event);
+        moveColorPointer(h,s,l);
+    };
+    
+    ["hue", "saturation", "lightness"].forEach(color => {
+        modal.querySelector(`.${color}`).addEventListener("input", (e) => {
+            let h = parseInt(modal.querySelector(".hue").value) || 0;
+            let s = parseInt(modal.querySelector(".saturation").value) || 0;
+            let l = parseInt(modal.querySelector(".lightness").value) || 0;
+        
+            
+            updateHslColors(h, s, l, opacity.value);
+            updateFontColor(event,opacity,modal);
+        });
+    });
+    ["red", "green", "blue"].forEach(color => {
+        modal.querySelector(`.${color}`).addEventListener("input", (e) => {
+            let r = parseInt(modal.querySelector(".red").value) || 0;
+            let g = parseInt(modal.querySelector(".green").value) || 0;
+            let b = parseInt(modal.querySelector(".blue").value) || 0;
+        
+            
+            updateRgbColors(r, g, b, opacity.value);
+            updateFontColor(event,opacity,modal);
+        });
+    });
+    const saveButton = modal.querySelector('.saveButton');
+    const cancelButton = modal.querySelector('.cancelButton');
+    saveButton.addEventListener('click', ()=>{
+        updateFontColor(event,opacity,modal);
+        closeColorModal(modal);
+    });
+    cancelButton.addEventListener('click', ()=>{
+        event.target.style.color = previusColor;
+        event.target.parentElement.querySelector('.textbox').style.color = previusColor;
+        closeColorModal(modal);
+    });
+    // opacity.addEventListener('input', ()=>{
+    //     const r = modal.querySelector('.red').value = rgba.r;
+    //     const g = modal.querySelector('.green').value = rgba.g;
+    //     const b = modal.querySelector('.blue').value = rgba.b;
+    //     var a = opacity.value;
+    //     setColor(`rgba(${r},${g},${b},${a})`, previusColor, modal);
+    //     setColorSlider({r,g,b,a}, previusColor, modal, event);
+
+    // });
+
+    //if the user clicks anywhere else but the color selection modal
+    window.onclick = function(e) {
+        if (e.target == modal) {
+            event.target.style.color = previusColor;
+            event.target.parentElement.querySelector('.textbox').style.color = previusColor;
+            closeColorModal(modal);
+        }
+    }
+
+    //init modal
+    var rgba = toRGBA(previusColor);
+    modal.querySelector('.red').value = rgba.r;
+    modal.querySelector('.green').value = rgba.g;
+    modal.querySelector('.blue').value = rgba.b;
+    updateRgbColors(rgba.r,rgba.g,rgba.b,rgba.a);
+    opacity.value = rgba.a;
+    modal.querySelector('#opacityVal').placeholder = rgba.a
+}
+function updateFontColor(event, opacity, modal) {
+    const r = modal.querySelector('.red').value;
+    const g = modal.querySelector('.green').value;
+    const b = modal.querySelector('.blue').value;
+    event.target.style.color = `rgba(${r},${g},${b},${opacity.value})`;
+    event.target.parentElement.querySelector('.textbox').style.color = `rgba(${r},${g},${b},${opacity.value})`;
+}
+function closeColorModal(modal) {
+    modal.remove();
+}
+function toRGBA(colorStr) {
+    // Check for HEX format (#FFF or #FFFFFF)
+    let hexMatch = colorStr.match(/^#([a-fA-F0-9]{3,6})$/);
+    
+    // Check for RGB format (rgb(r, g, b))
+    let rgbMatch = colorStr.match(/^rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)$/);
+    
+    // Check for RGBA format (rgba(r, g, b, a))
+    let rgbaMatch = colorStr.match(/^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d*\.?\d+)\)$/);
+
+    if (hexMatch) {
+        let hex = hexMatch[1];
+
+        // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+        if (hex.length === 3) {
+            hex = hex.split('').map(char => char + char).join('');
+        }
+
+        let bigint = parseInt(hex, 16);
+        let r = (bigint >> 16) & 255;
+        let g = (bigint >> 8) & 255;
+        let b = bigint & 255;
+
+        return {r, g, b, a: 1};
+    } else if (rgbMatch) {
+        let [_, r, g, b] = rgbMatch.map(Number);
+        return {r, g, b, a: 1};
+    } else if (rgbaMatch) {
+        let [_, r, g, b, a] = rgbaMatch.map(val => parseFloat(val));
+        return {r, g, b, a};
+    } else {
+        throw new Error('Unsupported color format.');
+    }
+}
+
+
+//create color picker modal
+function createColorPickModal () {
+    let modal = document.createElement('div');
+    modal.classList.add('modal-color');
+    let colorPickModalContent = `
+    <div class="modal-content-color">
+        <div class="spectrum-wrapper">
+            <div class="spectrum-layer"></div>
+            <div class="saturation-white"></div>
+            <div class="saturation-black"></div>
+            <div class="color-pointer"></div> <!-- Marker/pointer -->
+        </div>
+        <input type="range" min="0" max="100" value="50" class="color-slider">
+        <div class="color-details"> 
+            <div class="CurrentColorBlock"></div>
+            <div class="color-inputs">
+                <div class="color-row">
+                    <label for="red">R:</label><input type="text" name="red" class="red">
+                    <label for="hue">H:</label><input type="text" name="hue" class="hue">
+                </div>
+                <div class="color-row">
+                    <label for="green">G:</label><input type="text" name="green" class="green">
+                    <label for="saturation">S:</label><input type="text" name="saturation" class="saturation">
+                </div>
+                <div class="color-row">
+                    <label for="blue">B:</label><input type="text" name="blue" class="blue">
+                    <label for="lightness">L:</label><input type="text" name="lightness" class="lightness">
+                </div>
+            </div>
+        </div>
+        <form class="opacity-range">
+            <label for="opacity">Opacity:</label>
+            <input type="range" id="opacity" name="opacity" min="0" max="1" step="0.01" oninput="this.nextElementSibling.value = this.value"><input type="text" id="opacityVal" disabled>
+        </form>
+        <div class="colorButtons">
+            <button class="saveButton">Save</button>
+            <button class="cancelButton">Cancel</button>
+        </div>
+    </div>
+    `;
+
+    modal.innerHTML = colorPickModalContent;
+    document.body.appendChild(modal);
+
+    return modal;
+}
+function lerpColor(color1, color2, factor) {
+    const r = Math.round(color1.r + factor * (color2.r - color1.r));
+    const g = Math.round(color1.g + factor * (color2.g - color1.g));
+    const b = Math.round(color1.b + factor * (color2.b - color1.b));
+    return { r, g, b };
+}
+
+function setColorSlider(baseColor, previusColor, modal, event) {
+    const { r, g, b } = baseColor;
+    
+    // Dark shade
+    const dark = { r: Math.round(r * 0.3), g: Math.round(g * 0.3), b: Math.round(b * 0.3) };
+    // Bright shade
+    const bright = { r: Math.min(r + Math.round((255 - r) * 0.7), 255), g: Math.min(g + Math.round((255 - g) * 0.7), 255), b: Math.min(b + Math.round((255 - b) * 0.7), 255) };
+
+    const slider = modal.querySelector('.color-slider');
+    slider.style.background = `linear-gradient(to right, rgb(${dark.r}, ${dark.g}, ${dark.b}), rgb(${r}, ${g}, ${b}), rgb(${bright.r}, ${bright.g}, ${bright.b}))`;
+
+    return slider.oninput = function() {
+        const factor = this.value / 100;
+        const selectedColor = lerpColor(factor <= 0.5 ? dark : baseColor, factor <= 0.5 ? baseColor : bright, factor <= 0.5 ? factor * 2 : (factor - 0.5) * 2);
+        console.log('from here is testing \n')
+        console.log(lerpColor({r: 0, g: 0, b: 0}, {r: 255, g: 255, b: 255}, 0));   // should be {r: 0, g: 0, b: 0}
+        console.log(lerpColor({r: 0, g: 0, b: 0}, {r: 255, g: 255, b: 255}, 0.5)); // should be {r: 128, g: 128, b: 128}
+        console.log(lerpColor({r: 0, g: 0, b: 0}, {r: 255, g: 255, b: 255}, 1));   // should be {r: 255, g: 255, b: 255}
+
+        // console.log(selectedColor); // this is your selected color based on slider position
+        
+        // Update color inputs
+        modal.querySelector('.red').value = selectedColor.r;
+        modal.querySelector('.green').value = selectedColor.g;
+        modal.querySelector('.blue').value = selectedColor.b;
+        const [h, s, l] = rgbToHsl(selectedColor.r,selectedColor.g,selectedColor.b);
+        modal.querySelector('.hue').value = h;
+        modal.querySelector('.saturation').value = s;
+        modal.querySelector('.lightness').value = l;
+        var opacity = modal.querySelector('#opacity');
+        // Also move the color pointer based on the newly selected color
+        moveColorPointer(h, s, l);
+        setColor(`rgba(${selectedColor.r},${selectedColor.g},${selectedColor.b},${opacity.value})`, previusColor, modal)
+        updateFontColor(event, opacity, modal);
+        return selectedColor;
+    };
+}
+function rgbToHsl(r, g, b) {
+    r /= 255, g /= 255, b /= 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max == min) {
+        h = s = 0;  // achromatic
+    } else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return [h, s, l];
+}
+function hslToRgb(h, s, l) {
+    // let h = (parseFloat(h) || 0) / 360;
+    const hueToRgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    };
+
+    s = s / 100;
+    l = l / 100;
+    let r, g, b;
+
+    if (s === 0) {
+        r = g = b = l; // achromatic
+    } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hueToRgb(p, q, h + 1 / 3);
+        g = hueToRgb(p, q, h);
+        b = hueToRgb(p, q, h - 1 / 3);
+    }
+
+    return {
+        r: Math.round(r * 255),
+        g: Math.round(g * 255),
+        b: Math.round(b * 255)
+    };
+}
+function setColor(newColor, previousColor, modal) {
+    const currentColorDiv = modal.querySelector('.CurrentColorBlock');
+    console.log('this is the new color ' + newColor);
+    console.log('this is the prev color' + previousColor);
+    currentColorDiv.style.background = `linear-gradient(to left, ${newColor} 50%, ${previousColor} 50%)`;
+}
+
+function moveColorPointer(h, s, l) {// @param is equal to (r,g,b) or (h,s,l) if we have the updated hsl values
+    // // Convert RGB to HSL
+    // let [h, s, l] = rgbToHsl(r, g, b);
+
+    // Calculate position based on hue and saturation
+    const spectrumWrapper = document.querySelector(".spectrum-wrapper");
+    const spectrumWidth = spectrumWrapper.offsetWidth;
+    const spectrumHeight = spectrumWrapper.offsetHeight;
+    const leftPosition = (h / 360) * spectrumWidth;
+    const topPosition = (1 - s / 100) * spectrumHeight; // Assuming top is 0% saturation and bottom is 100%
+
+    // Move the color-pointer
+    const colorPointer = document.querySelector(".color-pointer");
+    colorPointer.style.left = `${leftPosition}px`;
+    colorPointer.style.top = `${topPosition}px`;
 }
 
 
