@@ -26,7 +26,22 @@ var currVid = 0;
 var videoData = {startTime: 0, endTime: 0};
 let isModalOpen = false;
 let runVid = false;
-
+var colorModalOpen = false;
+var isInteracting;
+var sizeRelative = false;
+var fontPresetList = [
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
+    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false}];
+var multipleSelection = false;
+var isOutofBound = false;
+var selectedElements = null;
+var elementsGrid = null;
+var wrapper = null;
 
 function getOrCreateGrid() {
     let refGrid = document.getElementById('grid-snap');
@@ -39,10 +54,78 @@ function getOrCreateGrid() {
         refGrid.id = 'grid-snap';
         wrapperGrid.appendChild(refGrid);
         document.body.appendChild(wrapperGrid);
+
+        // Create element Grid
+        let elementGrid = document.createElement('div');
+        elementGrid.className = 'elementGrid';
+        refGrid.appendChild(elementGrid);
+
+        // Add handles to the bounding box
+        const handles = ["tl", "tm", "ml", "tr", "mr", "bl", "bm", "br"];
+        handles.forEach(handle => {
+            let div = document.createElement('div');
+            div.className = `square handle-${handle}`;
+            elementGrid.appendChild(div);
+        });
+        elementsGrid = elementGrid;
+        wrapper = wrapperGrid;
+        
+
+        //make the element grid an interact js object
+        // interact('.elementGrid')
+        // .draggable({
+        //     onstart: [function(event) {
+        //         // Disable individual dragging of children
+        //         let children = Array.from(event.target.children);
+        //         children.forEach(child => {
+        //             child.setAttribute('data-no-drag', 'true');  // Just a custom attribute to track
+        //         });
+        //     }, ],
+        //     onmousemove: dragMoveListener,
+        //     onend: [function(event) {
+        //         // Re-enable individual dragging of children and update their translate values
+        //         let children = Array.from(event.target.children);
+        //         children.forEach(child => {
+        //             child.removeAttribute('data-no-drag');
+        //             // Assuming you use a utility function like this to update their translate values:
+        //             // savePositions();
+        //         });
+        //     }, endDragListener],
+        //     // ... other drag handlers
+        // });
+        // document.addEventListener('click', (e) => {
+        //     // if(multipleSelection=true) {
+        //     //     return;
+        //     // }
+        //     var target = e.target;
+        //     console.log(e.target);
+        //     while (target) {
+        //         if (Array.from(elementGrid.children).includes(target)) {
+        //             console.log('nigger\n\n\n\n');
+        //             return;
+        //         }
+        //         target = target.parentElement;
+        //     }
+        //     multipleSelection = false;
+        //     Array.from(elementGrid.children).forEach(child => {
+        //         if(child.className.includes('handle')) {
+        //             let boundingBox = child.querySelector('#boundingBox');
+        //             if(boundingBox) {
+        //                 Array.from(boundingBox.children).forEach(handle => {
+        //                     handle.style.display = 'block';
+        //                 });
+        //                 boundingBox.style.display = "none";
+        //                 refGrid.appendChild(child);
+        //             }
+        //         }
+        //     });
+        //     elementGrid.style.display = 'none';
+        // });
     }
 
     return { refGrid, wrapperGrid };
 }
+
 //Drag and drop img files into the application window to use them
 window.onload = function() {
     
@@ -120,6 +203,372 @@ window.onload = function() {
             // }
         });
 
+        let selectionBox = null;
+        let initialX, initialY, finalX, finalY;
+        let isHolding = false;
+
+        interact(refGrid)
+            .on('down', function(e) {
+                // const e = event.pointer;
+                if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player"))) {
+                    initialX = e.clientX;
+                    initialY = e.clientY;
+
+                    selectionBox = document.createElement("div");
+                    selectionBox.className = "selectionBox";
+                    document.body.appendChild(selectionBox);
+
+                    isHolding = true;
+                }
+            })
+            .on('move', function(event) {
+                if (isHolding) {
+                    finalX = event.clientX;
+                    finalY = event.clientY;
+
+                    let boxX = Math.min(initialX, finalX);
+                    let boxY = Math.min(initialY, finalY);
+                    let boxWidth = Math.abs(initialX - finalX);
+                    let boxHeight = Math.abs(initialY - finalY);
+
+                    Object.assign(selectionBox.style, {
+                        left: boxX + "px",
+                        top: boxY + "px",
+                        width: boxWidth + "px",
+                        height: boxHeight + "px"
+                    });
+                    if (selectionBox) {
+                        if (!(finalX != null && finalY != null)) {
+                            return;
+                        }
+                        const elementGrid = refGrid.querySelector('.elementGrid');
+                        var left = initialX;
+                        var right = finalX;
+                        var top = initialY;
+                        var bottom = finalY;
+                        var selectElementGrid = { left: 0, top: 0, right: 0, bottom: 0 };
+                        if (initialX > finalX) {
+                            left = finalX;
+                            right = initialX;
+                        }
+                        if (initialY > finalY) {
+                            top = finalY;
+                            bottom = initialY;
+                        }
+                        let draggableItems = document.querySelectorAll(".draggable");
+                        draggableItems.forEach(el => {
+                            let rect = el.getBoundingClientRect();
+                            if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                                && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
+                                //the element collided with the selection box so we add it to the element grid
+                                el.classList.add('selected');
+                                console.log('appnded \n\n\n');
+                                //then we showing the bounding box itself of the selected element
+                                // without her handles since we get the handles
+                                // from the element grid
+                                let boundingBox = el.querySelector('#boundingBox');
+                                if (boundingBox) {
+                                    Array.from(boundingBox.children).forEach(child => {
+                                        child.style.display = 'none';
+                                    });
+                                    boundingBox.style.display = "block";
+                                }
+                                // intialize selected element grid
+                                if (selectElementGrid.left === 0) {
+                                    selectElementGrid.left = rect.left;
+                                    selectElementGrid.top = rect.top;
+                                    selectElementGrid.right = rect.right;
+                                    selectElementGrid.bottom = rect.bottom;
+                                } else {
+                                    if (selectElementGrid.left > rect.left) {
+                                        selectElementGrid.left = rect.left;
+                                    }
+                                    if (selectElementGrid.top > rect.top) {
+                                        selectElementGrid.top = rect.top;
+                                    }
+                                    if (selectElementGrid.right < rect.right) {
+                                        selectElementGrid.right = rect.right;
+                                    }
+                                    if (selectElementGrid.bottom < rect.bottom) {
+                                        selectElementGrid.bottom = rect.bottom;
+                                    }
+                                }
+                                drawElementGrid(selectElementGrid)
+                                console.log("Selected:" + el);
+                            }
+                            // let previousSelected = document.querySelectorAll('.selected');
+                            // if (previousSelected) {
+                            //     let previousSelectedList = Array.from(previousSelected);
+                            //     if(previousSelectedList.length===2) {
+                            //         previousSelectedList.forEach(selected => {
+                            //             if(!selected.classList.contains('elementGrid')) {
+                            //                 let rect = selected.getBoundingClientRect();
+                            //                 if (rect.left != selectionBox.left) {
+                            //                     selected.classList.remove('selected');
+                            //                     let boundingBox = selected.querySelector('#boundingBox');
+                            //                     if (!(((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                            //                     && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom)))) {
+                            //                         Array.from(boundingBox.children).forEach(handle => {
+                            //                             handle.style.display = 'block';
+                            //                         });
+                            //                         boundingBox.style.display = 'none';
+                            //                     }
+                            //                 }
+                            //             }
+                            //         });
+                            //     }
+                            //     // if(Array.from(document.querySelectorAll('.selected')).length===1) {
+                            //     //     eGrid = document.querySelector('.elementGrid');
+                            //     //     eGrid.style.display='none';
+                            //     //     eGrid.classList.remove('selected');
+                            //     // }
+                            // }
+                        });
+                        let draggableNotes = document.querySelectorAll(".textboxContainer");
+                        draggableNotes.forEach(el => {
+                            let rect = el.getBoundingClientRect();
+                            if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                                && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
+                                //the element collided with the selection box so we add it to the element grid
+                                el.classList.add('selected');
+                                console.log('appnded \n\n\n');
+                                //then we showing the bounding box itself of the selected element
+                                // without her handles since we get the handles
+                                // from the element grid
+                                let boundingBox = el.querySelector('#boundingBox');
+                                if (boundingBox) {
+                                    Array.from(boundingBox.children).forEach(child => {
+                                        child.style.display = 'none';
+                                    });
+                                    boundingBox.style.display = "block";
+                                }
+                                // intialize selected element grid
+                                if (selectElementGrid.left === 0) {
+                                    selectElementGrid.left = rect.left;
+                                    selectElementGrid.top = rect.top;
+                                    selectElementGrid.right = rect.right;
+                                    selectElementGrid.bottom = rect.bottom;
+                                } else {
+                                    if (selectElementGrid.left > rect.left) {
+                                        selectElementGrid.left = rect.left;
+                                    }
+                                    if (selectElementGrid.top > rect.top) {
+                                        selectElementGrid.top = rect.top;
+                                    }
+                                    if (selectElementGrid.right < rect.right) {
+                                        selectElementGrid.right = rect.right;
+                                    }
+                                    if (selectElementGrid.bottom < rect.bottom) {
+                                        selectElementGrid.bottom = rect.bottom;
+                                    }
+                                }
+                                drawElementGrid(selectElementGrid)
+                                console.log("Selected:" + el);
+                            }
+                        });
+                    }
+                }
+            })
+            .on('up', function(event) {
+                if (isHolding) {
+                    // Your previous logic on mouseup
+                    // ...
+
+                    selectionBox.remove();
+                    selectionBox = null;
+
+                    initialX = initialY = finalX = finalY = null;
+
+                    isHolding = false;
+                }
+            });
+
+        // Prevent default behavior for dragging and selecting on refGrid
+        interact(refGrid).preventDefault('auto');
+        // refGrid.addEventListener("mousedown", (e) => {
+        //     if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player")) ) {
+        //         initialX = e.clientX;
+        //         initialY = e.clientY;
+
+        //         selectionBox = document.createElement("div");
+        //         selectionBox.className = "selectionBox";
+        //         document.body.appendChild(selectionBox);
+        //         console.log(e.target.parentElement.classList);
+        //     }
+        // });
+
+        // refGrid.addEventListener("mousemove", (e) => {
+        //     if (selectionBox) {
+        //         finalX = e.clientX;
+        //         finalY = e.clientY;
+
+        //         let boxX = Math.min(initialX, finalX);
+        //         let boxY = Math.min(initialY, finalY);
+        //         let boxWidth = Math.abs(initialX - finalX);
+        //         let boxHeight = Math.abs(initialY - finalY);
+
+        //         Object.assign(selectionBox.style, {
+        //             left: boxX + "px",
+        //             top: boxY + "px",
+        //             width: boxWidth + "px",
+        //             height: boxHeight + "px"
+        //         });
+        //     }
+        // });
+
+        // refGrid.addEventListener("mouseup", () => {
+        //     if (selectionBox) {
+        //         if(!(finalX!=null && finalY!=null)) {
+        //             return;
+        //         }
+        //         const elementGrid = refGrid.querySelector('.elementGrid');
+        //         var left = initialX;
+        //         var right = finalX;
+        //         var top = initialY;
+        //         var bottom = finalY; 
+        //         var selectElementGrid = {left:0, top:0, right:0, bottom:0};
+        //         if (initialX > finalX) {
+        //             left = finalX;
+        //             right = initialX;
+        //         }
+        //         if (initialY > finalY) {
+        //             top = finalY;
+        //             bottom = initialY;
+        //         }
+        //         let draggableItems = document.querySelectorAll(".draggable");
+        //         draggableItems.forEach(el => {
+        //             let rect = el.getBoundingClientRect();
+        //             if (((rect.left <= left && rect.right>=left) || (rect.left >= left && rect.left<=right))
+        //              && ((rect.top <= top && rect.bottom>=top) || (rect.top >= top && rect.top<=bottom))) {
+        //                 //the element collided with the selection box so we add it to the element grid
+        //                 el.classList.add('selected');
+        //                 console.log('appnded \n\n\n');
+        //                 //then we showing the bounding box itself of the selected element
+        //                 // without her handles since we get the handles
+        //                 // from the element grid
+        //                 let boundingBox = el.querySelector('#boundingBox');
+        //                 if(boundingBox) {
+        //                     Array.from(boundingBox.children).forEach(child => {
+        //                         child.style.display = 'none';
+        //                     });
+        //                     boundingBox.style.display = "block";
+        //                 }
+        //                 // intialize selected element grid
+        //                 if(selectElementGrid.left === 0) {
+        //                     selectElementGrid.left = rect.left;
+        //                     selectElementGrid.top = rect.top;
+        //                     selectElementGrid.right = rect.right;
+        //                     selectElementGrid.bottom = rect.bottom;
+        //                 }else {
+        //                     if(selectElementGrid.left > rect.left) {
+        //                         selectElementGrid.left = rect.left;
+        //                     }
+        //                     if(selectElementGrid.top > rect.top) {
+        //                         selectElementGrid.top = rect.top;
+        //                     }
+        //                     if(selectElementGrid.right < rect.right) {
+        //                         selectElementGrid.right = rect.right;
+        //                     }
+        //                     if(selectElementGrid.bottom < rect.bottom) {
+        //                         selectElementGrid.bottom = rect.bottom;
+        //                     }
+        //                 }
+        //                 drawElementGrid(selectElementGrid)
+        //                 console.log("Selected:" + el);
+        //             }
+        //         });
+        //         let draggableNotes = document.querySelectorAll(".textboxContainer");
+        //         draggableNotes.forEach(el => {
+        //             let rect = el.getBoundingClientRect();
+        //             if (((rect.left <= left && rect.right>=left) || (rect.left >= left && rect.left<=right))
+        //              && ((rect.top <= top && rect.bottom>=top) || (rect.top >= top && rect.top<=bottom))) {
+        //                 //the element collided with the selection box so we add it to the element grid
+        //                 el.classList.add('selected');
+        //                 console.log('appnded \n\n\n');
+        //                 //then we showing the bounding box itself of the selected element
+        //                 // without her handles since we get the handles
+        //                 // from the element grid
+        //                 let boundingBox = el.querySelector('#boundingBox');
+        //                 if(boundingBox) {
+        //                     Array.from(boundingBox.children).forEach(child => {
+        //                         child.style.display = 'none';
+        //                     });
+        //                     boundingBox.style.display = "block";
+        //                 }
+        //                 // intialize selected element grid
+        //                 if(selectElementGrid.left === 0) {
+        //                     selectElementGrid.left = rect.left;
+        //                     selectElementGrid.top = rect.top;
+        //                     selectElementGrid.right = rect.right;
+        //                     selectElementGrid.bottom = rect.bottom;
+        //                 }else {
+        //                     if(selectElementGrid.left > rect.left) {
+        //                         selectElementGrid.left = rect.left;
+        //                     }
+        //                     if(selectElementGrid.top > rect.top) {
+        //                         selectElementGrid.top = rect.top;
+        //                     }
+        //                     if(selectElementGrid.right < rect.right) {
+        //                         selectElementGrid.right = rect.right;
+        //                     }
+        //                     if(selectElementGrid.bottom < rect.bottom) {
+        //                         selectElementGrid.bottom = rect.bottom;
+        //                     }
+        //                 }
+        //                 drawElementGrid(selectElementGrid)
+        //                 console.log("Selected:" + el);
+        //             }
+        //         });
+
+
+        //         selectionBox.remove();
+        //         selectionBox = null;
+        //         console.log(initialX);
+        //         console.log(initialY);
+        //         console.log(finalX);
+        //         console.log(finalY);
+
+        //         initialX=initialY=finalX=finalY=null;
+
+        //     }
+        // });
+
+        function drawElementGrid(selectElementGrid) {
+            multipleSelection = true;
+            refGridRect = refGrid.getBoundingClientRect();
+            var elementGrid = document.querySelector('.elementGrid');
+            elementGrid.style.display = 'block';
+            elementGrid.classList.add('selected');
+            // if(elementGrid.style.display==='none') {
+            // }
+            let elX = (selectElementGrid.left-parseFloat(refGridRect.left).toFixed(2))/scale;
+            let elY = (selectElementGrid.top-parseFloat(refGridRect.top).toFixed(2))/scale;
+            elementGrid.setAttribute('data-x', elX);
+            elementGrid.setAttribute('data-y', elY);
+            elementGrid.style.transform = `translate(${elX}px, ${elY}px)`;
+            elementGrid.style.width = ((selectElementGrid.right-selectElementGrid.left)/scale)+'px';
+            elementGrid.style.height = ((selectElementGrid.bottom-selectElementGrid.top)/scale)+'px';
+            
+            let previousSelected = document.querySelectorAll('.selected');
+            if (previousSelected) {
+                Array.from(previousSelected).forEach(selected => {
+                    let rect = selected.getBoundingClientRect();
+                    if (!(((rect.left <= selectElementGrid.left && rect.right>=selectElementGrid.left) || (rect.left >= selectElementGrid.left && rect.left<=selectElementGrid.right))
+                      && ((rect.top <= selectElementGrid.top && rect.bottom>=selectElementGrid.top) || (rect.top >= selectElementGrid.top && rect.top<=selectElementGrid.bottom)))) {
+                        selected.classList.remove('selected');
+                        let boundingBox = selected.querySelector('#boundingBox');
+                        if(boundingBox) {
+                            Array.from(boundingBox.children).forEach(handle => {
+                                handle.style.display = 'block';
+                            });
+                            boundingBox.style.display = 'none';
+                        }
+                    }
+                });
+                // console.log('\n\n\n\nProblem');
+            }
+        }
+
         let isPanning = false;
         let startPan = { x: 0, y: 0 };
         let accPan = { x: 0, y: 0 };
@@ -176,6 +625,15 @@ window.onload = function() {
             if (e.button === 1) {  // Check if the middle (wheel) button is released
                 isPanning = false;
             }
+        });
+
+        refGrid.addEventListener('dblclick', event => {
+            if (document.selection && document.selection.empty) {
+                document.selection.empty();
+              } else if (window.getSelection) {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+              }
         });
 
 
@@ -308,7 +766,7 @@ window.onload = function() {
             interact('.draggable')
                 .draggable({
                     ignoreFrom: '.vidPause',
-                    inertia: true,
+                    // inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
                             // restriction: 'parent',
@@ -316,8 +774,8 @@ window.onload = function() {
                             endOnly: true
                         })
                     ],
-                    autoScroll: true,
-                    listeners: { move: dragMoveListener, end: endDragListener }
+                    // autoScroll: true,
+                    listeners: { start: selectListener, move: dragMoveListener, end: endDragListener }
                 })
                 .resizable({
                     edges: { left: true, right: true, bottom: true, top: true },
@@ -370,9 +828,9 @@ window.onload = function() {
 function hideAllCloseButtons() {
     let closeButtons = document.querySelectorAll('.close-button');
     let boundBoxs = document.querySelectorAll("#boundingBox");
-    boundBoxs.forEach(function(boundBox) {
-        boundBox.style.display='none';
-    });
+    // boundBoxs.forEach(function(boundBox) {
+    //     boundBox.style.display='none';
+    // });
     closeButtons.forEach(function(button) {
         button.style.display = 'none';
         console.log('close button off');
@@ -383,17 +841,36 @@ document.addEventListener('click', function(event) {
     var centerGrid = document.getElementById('grid-snap').getBoundingClientRect();
     centerPoint.x = centerGrid.width/2;
     centerPoint.y = centerGrid.height/2;
-    console.log('this is the point you clicked at - ' + event.x + ' , ' + event.y);
-    console.log(document.getElementById('grid-snap').getBoundingClientRect());
+    console.log(event.target);
     selectedElement=0;
     hideAllCloseButtons();
 });
 
 
-
+function selectListener(event) {
+    var target = event.target;
+    selectedElements = document.querySelectorAll('.selected');
+    if(!target.classList.contains('selected')) {
+        elementsGrid.style.display = 'none';
+        let previousSelected = document.querySelectorAll('.selected');
+        Array.from(previousSelected).forEach(child => {
+            let boundingBox = child.querySelector('#boundingBox');
+            if(boundingBox) {
+                Array.from(boundingBox.children).forEach(handle => {
+                    handle.style.display = 'block';
+                });
+                boundingBox.style.display = 'none';
+            }        
+            child.classList.remove('selected');
+        });
+    }
+}
 function dragMoveListener(event) {
     var target = event.target;
-    var wrapper = document.querySelector('.wrapper-grid');
+    // var wrapper = document.querySelector('.wrapper-grid');
+    // // If elementGrid is the target, move all selected elements with it
+    // var elementGrid = document.querySelector('.elementGrid');
+    var grid = false
     isDragging = true;
     event.target.style.zIndex = 1000;
     if(load===0) {
@@ -406,28 +883,58 @@ function dragMoveListener(event) {
         }
         load++;
     }
+    if(elementsGrid.classList.contains('selected')) {
+        grid = true;
+    }
     var x = (parseFloat(target.getAttribute('data-x')) || 0) + (event.dx/scale);
     var y = (parseFloat(target.getAttribute('data-y')) || 0) + (event.dy/scale);
-    console.log(x + ' this is the current x');
-    console.log((event.dx/scale) + ' this is the (event.dx/scale)');
-    console.log(parseFloat(target.getAttribute('data-x')) + ' this is data X');
-    console.log(event.dx + ' this is the current dx');
-    console.log(event.dy + ' this is the current dy');
-    if(y>=0 && x>=0){
+    // console.log(x + ' this is the current x');
+    // console.log((event.dx/scale) + ' this is the (event.dx/scale)');
+    // console.log(parseFloat(target.getAttribute('data-x')) + ' this is data X');
+    // console.log(event.dx + ' this is the current dx');
+    // console.log(event.dy + ' this is the current dy');
+    if(y>=0 && x>=0 && !isOutofBound){
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
         translation.x = x;
         translation.y = y;
     }
-    getOutOfBoundTravel(event);
+
+    if (target.className.includes('selected')) {
+        selectedElements.forEach(el => {
+            if(el !== event.target) {
+                let elX = (parseFloat(el.getAttribute('data-x')) || 0) + (event.dx/scale);
+                let elY = (parseFloat(el.getAttribute('data-y')) || 0) + (event.dy/scale);
+                if((elX>0 && elY>0)) {
+                    if(isOutofBound===true && el === elementsGrid) {
+                        isOutofBound = false;
+                    }
+                    if(!isOutofBound) {
+                        el.style.transform = 'translate(' + elX + 'px, ' + elY + 'px)';
+                        el.setAttribute('data-x', elX);
+                        el.setAttribute('data-y', elY);
+                    }
+                }else{
+                    isOutofBound = true;
+                    return;
+
+                }
+            }
+        });
+        console.log(elementsGrid);
+        getOutOfBoundTravel(elementsGrid);
+    }
+    getOutOfBoundTravel(event.target);
 }
 
 function endDragListener(event) {
+    isInteracting=false;
     isDragging=false;
-    getOutOfBoundTravel(event);
+    getOutOfBoundTravel(event.target);
 }
 function endResizeListener(event) {
+    isInteracting = false;
     let { target, rect } = event;
     isResize=0;
     let x = (parseFloat(target.getAttribute('data-x')) || 0);
@@ -442,9 +949,9 @@ function endResizeListener(event) {
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
     }
-    getOutOfBoundTravel(event);
+    getOutOfBoundTravel(event.target);
     window.requestAnimationFrame(function() {
-        resizeCanvas(event);
+        resizeCanvas();
         // updateBoundingBox(event);
     });
     // updateBoundingBox(event);
@@ -452,7 +959,13 @@ function endResizeListener(event) {
 
 function getOutOfBoundTravel(event) {
     var boundRect = document.getElementById('grid-snap').getBoundingClientRect();
-    var targetRect = event.target.getBoundingClientRect();
+    // var target='';
+    // if(event === document.querySelector('elementGrid')) {
+    //     target = event;
+    // }else {
+    //     target = event.target;
+    // }
+    var targetRect = event.getBoundingClientRect();
     //we divide by scale, since when we zoom in and out, the y and x are also scaled and so to calculate the actual distance overlap we need to divide by the scale
     lastPos.left = (boundRect.x-targetRect.x)/scale;
     lastPos.right = (targetRect.right-boundRect.right)/scale;
@@ -460,13 +973,13 @@ function getOutOfBoundTravel(event) {
     console.log(lastPos.top);
     lastPos.bottom = (targetRect.bottom-boundRect.bottom)/scale;
     if(lastPos.bottom>0 || lastPos.right>0) {
-        resizeCanvas(event);
+        resizeCanvas();
     }else {
         // updateBoundingBox(event);
     }
 }
 
-function resizeCanvas(event) {
+function resizeCanvas() {
     boundRect = document.getElementById('grid-snap').getBoundingClientRect();
     contStyle = document.getElementById('grid-snap').style;
     // boundBox = document.getElementById('boundingBox');
@@ -532,9 +1045,9 @@ function resizeMoveListener(event) {
         translation.x = x;
         translation.y = y;
     }
-    getOutOfBoundTravel(event);
+    getOutOfBoundTravel(event.target);
     window.requestAnimationFrame(function() {
-        resizeCanvas(event);
+        resizeCanvas();
         // updateBoundingBox(event);
     });
 }
@@ -542,9 +1055,22 @@ function resizeMoveListener(event) {
 interact('.draggable').on('tap', function (event) {
     let target = event.currentTarget;
     // Hide the bounding box for any previous selected element
-    let previousSelected = document.querySelector('.selected');
+    let previousSelected = document.querySelectorAll('.selected');
     if (previousSelected) {
-        previousSelected.classList.remove('selected');
+        Array.from(previousSelected).forEach(selected => {
+            selected.classList.remove('selected');
+            if(multipleSelection) {
+                document.querySelector('.elementGrid').style.display = 'none';
+                multipleSelection = false;
+            }
+            let boundingBox = selected.querySelector('#boundingBox');
+            if (boundingBox) {
+                Array.from(boundingBox.children).forEach(handle => {
+                    handle.style.display = 'block';
+                });
+                boundingBox.style.display = 'none';
+            }
+        });
     }
 
     // Show the bounding box for the new selected element
@@ -560,14 +1086,34 @@ interact('.draggable').on('tap', function (event) {
     event.preventDefault();
 });
 
-interact('body').on('click', function(event) {
+interact('#grid-snap').on('tap', function(event) {
     // if the clicked element is not an image, hide the bounding box
-    if (event.target.className !== 'draggable') {
-        let previousSelected = document.querySelector('.selected');
+    var target = event.target;
+    while(target) {
+        if(target.classList.contains("textboxContainer") || target.classList.contains("draggable") || target.classList.contains("player")) {
+            return;
+        }
+        target = target.parentElement;
+    }
+    if (!event.target.classList.contains('draggable')) {
+        console.log(event.target);
+        let previousSelected = document.querySelectorAll('.selected');
         if (previousSelected) {
-            previousSelected.classList.remove('selected');
-            let boundingBox = document.querySelector('#boundingBox');
-            boundingBox.style.display = 'none';
+            Array.from(previousSelected).forEach(selected => {
+                selected.classList.remove('selected');
+                if(multipleSelection) {
+                    document.querySelector('.elementGrid').style.display = 'none';
+                    multipleSelection = false;
+                }
+                let boundingBox = selected.querySelector('#boundingBox');
+                if(boundingBox) {
+                    Array.from(boundingBox.children).forEach(handle => {
+                        handle.style.display = 'block';
+                    });
+                    boundingBox.style.display = 'none';
+                }
+            });
+            // console.log('\n\n\n\nProblem');
         }
     }
 });
@@ -625,13 +1171,23 @@ function savePositions() {
 // Create a new draggable text box
 function createNewNote() {
     const textbox = document.createElement('div');
-    textbox.className = 'draggable textboxContainer';
+    textbox.className = 'textboxContainer';
     textbox.style.overflow = 'revert';
     textbox.style.position = 'absolute';
     
     const textarea = document.createElement('textarea');
     textarea.className = 'textbox';
     textarea.textContent = 'Note';
+    textarea.disabled = 'true';
+
+    textarea.addEventListener('dblclick', event => {
+        if (document.selection && document.selection.empty) {
+            document.selection.empty();
+          } else if (window.getSelection) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+          }
+    });
     textarea.addEventListener('input', function() {
         // growFont(textarea);
         const parentContainer = this.parentElement;
@@ -650,17 +1206,47 @@ function createNewNote() {
     });
     // textarea.style.fontSize='100%';
     
+    // Create bounding box
+    let boundingBox = document.createElement('div');
+    boundingBox.id = 'boundingBox';
+    textbox.appendChild(boundingBox);
+
+    // Add handles to the bounding box
+    const handles = ["tl", "tm", "ml", "tr", "mr", "bl", "bm", "br"];
+    handles.forEach(handle => {
+        let div = document.createElement('div');
+        div.className = `square handle-${handle}`;
+        boundingBox.appendChild(div);
+    });
     const closeButton = document.createElement('button');
     closeButton.className = 'close-button';
     closeButton.textContent = String.fromCodePoint(0x1F534);
     closeButton.style.display = 'none'; // initially, the close button is hidden
+    
+    const fontColorButton = document.createElement('button');
+    fontColorButton.className = 'font-Color-Select';
+    fontColorButton.innerHTML = 'T';
+    fontColorButton.style.display='none';
+
     const fontButton = document.createElement('button');
     fontButton.className = 'font-Select';
     fontButton.innerHTML = 'T';
-    fontButton.onclick = (event) => {
-        showColorPickModal(event);
+    fontButton.style.display='none';
+    
+    const outlineColorButton = document.createElement('button');
+    outlineColorButton.className = 'outline-Color-Select';
+    outlineColorButton.innerHTML = 'T';
+    outlineColorButton.style.display='none';
+
+    fontColorButton.onclick = (event) => {
+        showColorPickModal(event, 'font');
     };
-    fontButton.style.direction ='none';
+    fontButton.onclick = (event) => {
+        showFontPickModal(event);
+    };
+    outlineColorButton.onclick = (event) => {
+        showColorPickModal(event, 'outline');
+    };
 
     
     closeButton.addEventListener('click', function (event) {
@@ -668,7 +1254,10 @@ function createNewNote() {
         textbox.remove();
     });
 
+
+    textbox.appendChild(fontColorButton);
     textbox.appendChild(fontButton);
+    textbox.appendChild(outlineColorButton);
     textbox.appendChild(closeButton);
     textbox.appendChild(textarea);
     
@@ -680,11 +1269,18 @@ function createNewNote() {
         let closeButton = this.querySelector('.close-button');
         if (closeButton) {
             closeButton.style.display = 'block';
+            selectedElement = event;
+            // let boundingBox = this.querySelector('#boundingBox');
+            // if(boundingBox) {
+            //     boundingBox.style.display = "block";
+            // }
         }
     });
+    
 
-    interact('.draggable')
+    interact('.textboxContainer')
         .draggable({
+            enabled: true,
             inertia: true,
             modifiers: [
                 interact.modifiers.restrictRect({
@@ -693,13 +1289,14 @@ function createNewNote() {
                 })
             ],
             autoScroll: true,
-            listeners: { move: dragMoveListener, end: endDragListener }
+            listeners: { start: [disableNoteState, showBoundingBox] , move: [dragMoveListener], end: [endDragListener,showBoundingBox] }
         })
         .resizable({
+            enabled: true,
             edges: { left: true, right: true, bottom: true, top: true },
             margin: 10,
             preserveAspectRatio: true,
-            listeners: { move: [resizeMoveListener], end:[endResizeListener,growFont] },
+            listeners: { start: [disableNoteState, showBoundingBox] ,move: [resizeMoveListener], end:[endResizeListener,growFont,showBoundingBox] },
             modifiers: [
                 interact.modifiers.restrictEdges({
                     outer: 'parent',
@@ -710,20 +1307,116 @@ function createNewNote() {
                 }),
             ],
             inertia: true,
-        });
-}
+        })//on double tap enable font editing, and show font tool tip
+        .on(['doubletap'], (event) => {
+            // str = JSON.stringify(event.currentTarget);
+            event.preventDefault();
 
+            console.log(event.target.parentElement.className + '\n\n\n\n');
+            // growFont(event);
+            event.target.disabled = false;
+            const textbox = event.target.parentElement;
+            textbox.querySelector('.font-Select').style.display = 'block';
+            textbox.querySelector('.font-Color-Select').style.display = 'block';
+            textbox.querySelector('.outline-Color-Select').style.display = 'block';
+            interact('.textboxContainer').draggable({enabled:false});
+            interact('.textboxContainer').resizable({ enabled: false });
+            showBoundingBox(event, false)
+            window.requestAnimationFrame(() => {
+                showBoundingBox(event, false);
+            });
+            event.target.focus();
+        })
+        .on('tap', (event) => {
+            if(event.target.disabled) {
+                // Hide the bounding box for any previous selected element
+                let previousSelected = document.querySelectorAll('.selected');
+                if (previousSelected) {
+                    Array.from(previousSelected).forEach(selected => {
+                        selected.classList.remove('selected');
+                        if(multipleSelection) {
+                            document.querySelector('.elementGrid').style.display = 'none';
+                            multipleSelection = false;
+                        }
+                        let boundingBox = selected.querySelector('#boundingBox');
+                        if (boundingBox) {
+                            Array.from(boundingBox.children).forEach(handle => {
+                                handle.style.display = 'block';
+                            });
+                            boundingBox.style.display = 'none';
+                        }
+                    });
+                }
+                console.log('im the p')
+                event.target.classList.add('selected');
+                showBoundingBox(event, true);
+            }
+        });
+
+    document.addEventListener('click', (event) => {
+        if(event.target!==textbox && !textbox.contains(event.target)) {
+            if(colorModalOpen) {
+                return;
+            }
+            interact('.textboxContainer').draggable({ enabled: true});
+            interact('.textboxContainer').resizable({ enabled: true});
+            disableNoteState(event);
+            let boundBoxs = document.querySelectorAll("#boundingBox");
+            boundBoxs.forEach(function(boundBox) {
+                boundBox.style.display='none';
+            });
+        }
+    })
+}
+function showBoundingBox(event, state=true) {
+    var target;
+    if(event.target) {
+        if(event.target.className == 'textbox') {
+            target = event.target.parentElement;
+        }else {
+            target = event.target;
+        }
+    }
+    if(!target.classList.contains('textboxContainer')) {
+        return;
+    }
+    var boundBox = target.querySelector('#boundingBox');
+    if(state) {
+        boundBox.style.display ='block';
+        console.log('true\n\n\n' + boundBox);
+    }else {
+        boundBox.style.display ='none';
+        console.log('false \n\n\n');
+    }
+}
 function growFont(event) {
+    if(!sizeRelative) {
+        return;
+    }
     var target = event.target;
-    var textarea = target.querySelector('.textbox');
-    // if(event.className='textbox') {
-    //     textarea=event;
-    //     console.log(event.className)
-    // }else {
-    //     textarea = target.querySelector('.textbox');
-    // }
-        
-    // Increase font size until content might overflow
+    var textarea;
+    // we do this check
+    // because in font selection we send the textbox directly
+    // could be optimize tho
+    if(!target) {
+        target = event;
+        if(target.className == 'textbox') {
+            textarea = event;
+            target = event.parentElement;
+        }else {
+            textarea = target.querySelector('.textbox');
+        }
+    }else {
+        if(target.className == 'textbox') {
+            textarea = target;
+            target = target.parentElement;
+        }else {
+            textarea = target.querySelector('.textbox');
+        }
+    }
+    // we do this check
+    // because in font selection we send the textbox directly
+    // could be optimize tho
     for (let i = 10; i < 500; i++) { // max limit of 200px, can be adjusted
         textarea.style.fontSize = i + "px";
 
@@ -746,8 +1439,13 @@ function growFont(event) {
     adjustAfterResize(event);
 }
 function adjustAfterResize(event) {
-    const textarea = event.target.querySelector('.textbox');
-    
+    var textarea = '';
+    //because font selection we send the textbox directly could be optimize tho
+    if(!event.target) {
+        textarea = event;
+    }else {
+        textarea = event.target.querySelector('.textbox');
+    }
     // Adjust font size to prevent overflow
     while (textarea.scrollHeight > textarea.offsetHeight || textarea.scrollWidth > textarea.offsetWidth) {
         const currentSize = parseInt(window.getComputedStyle(textarea).fontSize);
@@ -759,6 +1457,14 @@ function adjustAfterResize(event) {
         const currentWidth = parseFloat(window.getComputedStyle(event.target).width);
         event.target.style.width = (currentWidth + 10) + "px"; 
     }
+}
+function disableNoteState(event) {
+    const note = event.target;
+    note.querySelector('.textbox').disabled = true;
+    note.querySelector('.font-Select').style.display = 'none';
+    note.querySelector('.font-Color-Select').style.display = 'none';
+    note.querySelector('.outline-Color-Select').style.display = 'none';
+    isInteracting=true;
 }
 
 // document.addEventListener('click', function(event) {
@@ -1255,11 +1961,14 @@ function captureFrame(videoElement, time) {
 
 
 //Color code
-function showColorPickModal(event) {
+function showColorPickModal(event, type) {
+    colorModalOpen = true;
     modal = createColorPickModal();
     const getSpectrumWrapper = () => modal.querySelector(".spectrum-wrapper");
     const opacity = modal.querySelector("#opacity");
     const previusColor = window.getComputedStyle(event.target).getPropertyValue('color');
+    const previusBackgroundColor = window.getComputedStyle(event.target).getPropertyValue('background');
+
     
     opacity.addEventListener('input', () => {
         const opacityVal = opacity.parentElement.querySelector('opacityVal');
@@ -1364,8 +2073,8 @@ function showColorPickModal(event) {
         const xPosition = e.clientX - getSpectrumWrapper().getBoundingClientRect().left;
         colorPointer.style.left = `${xPosition}px`;
         colorPointer.style.display = "block";
-        setColorSlider({r,g,b}, previusColor, modal, event);
-        updateFontColor(event,opacity,modal);
+        setColorSlider({r,g,b}, previusColor, modal, event, type);
+        updateFontColor(event,opacity,modal, type);
     });
     // Logic that's executed during mouse drag.
     function onColorSelect(e) {
@@ -1395,8 +2104,8 @@ function showColorPickModal(event) {
         const xPosition = e.clientX - getSpectrumWrapper().getBoundingClientRect().left;
         colorPointer.style.left = `${xPosition}px`;
         colorPointer.style.display = "block";
-        setColorSlider({r,g,b}, previusColor, modal, event);
-        updateFontColor(event,opacity,modal);
+        setColorSlider({r,g,b}, previusColor, modal, event, type);
+        updateFontColor(event,opacity,modal, type);
     }
 
     getSpectrumWrapper().addEventListener("mouseup", () => {
@@ -1418,7 +2127,7 @@ function showColorPickModal(event) {
         modal.querySelector(".saturation").value = s;
         modal.querySelector(".lightness").value = l;
         // update dark to light range
-        setColorSlider({r,g,b}, previusColor, modal, event);
+        setColorSlider({r,g,b}, previusColor, modal, event, type);
         moveColorPointer(h,s,l);
     };
     //update by HSL
@@ -1434,7 +2143,7 @@ function showColorPickModal(event) {
         modal.querySelector(".green").value = g;
         modal.querySelector(".blue").value = b;
         // update dark to light range
-        setColorSlider({r,g,b}, previusColor, modal, event);
+        setColorSlider({r,g,b}, previusColor, modal, event, type);
         moveColorPointer(h,s,l);
     };
     
@@ -1446,7 +2155,7 @@ function showColorPickModal(event) {
         
             
             updateHslColors(h, s, l, opacity.value);
-            updateFontColor(event,opacity,modal);
+            updateFontColor(event,opacity,modal, type);
         });
     });
     ["red", "green", "blue"].forEach(color => {
@@ -1457,13 +2166,13 @@ function showColorPickModal(event) {
         
             
             updateRgbColors(r, g, b, opacity.value);
-            updateFontColor(event,opacity,modal);
+            updateFontColor(event,opacity,modal, type);
         });
     });
     const saveButton = modal.querySelector('.saveButton');
     const cancelButton = modal.querySelector('.cancelButton');
     saveButton.addEventListener('click', ()=>{
-        updateFontColor(event,opacity,modal);
+        updateFontColor(event,opacity,modal, type);
         closeColorModal(modal);
     });
     cancelButton.addEventListener('click', ()=>{
@@ -1482,10 +2191,25 @@ function showColorPickModal(event) {
     // });
 
     //if the user clicks anywhere else but the color selection modal
+    // update -- currently I've set it so only the coresponding button will change, and so the forEach is not needed
+    // since we're only changing a trait of a single button
+    // but if you want to change all the buttons
+    // all you need to do is uncomment from noteContainer in
+    // updateFontColor()
     window.onclick = function(e) {
         if (e.target == modal) {
-            event.target.style.color = previusColor;
-            event.target.parentElement.querySelector('.textbox').style.color = previusColor;
+            if(type==='font') {
+                event.target.parentElement.querySelectorAll('button').forEach(function(button) {
+                    button.style.color = previusColor;
+                });
+                event.target.parentElement.querySelector('.textbox').style.color = previusColor;
+            }
+            else if (type === 'outline') {
+                event.target.parentElement.querySelectorAll('button').forEach(function(button) {
+                    button.style.background = previusBackgroundColor;
+                });
+                event.target.parentElement.querySelector('.textbox').style.background = previusBackgroundColor;
+            }
             closeColorModal(modal);
         }
     }
@@ -1499,14 +2223,31 @@ function showColorPickModal(event) {
     opacity.value = rgba.a;
     modal.querySelector('#opacityVal').placeholder = rgba.a
 }
-function updateFontColor(event, opacity, modal) {
+function updateFontColor(event, opacity, modal, type) {
     const r = modal.querySelector('.red').value;
     const g = modal.querySelector('.green').value;
     const b = modal.querySelector('.blue').value;
-    event.target.style.color = `rgba(${r},${g},${b},${opacity.value})`;
-    event.target.parentElement.querySelector('.textbox').style.color = `rgba(${r},${g},${b},${opacity.value})`;
+    const noteContainer = event.target.parentElement;
+    const note = noteContainer.querySelector('.textbox');
+    // noteContainer.querySelectorAll('button').forEach(function(button) {
+    //     if(type==='font') {
+    //         button.style.color = `rgba(${r},${g},${b},${opacity.value})`;
+    //     }
+    //     else if(type==='outline') {
+    //         button.style.background = `rgba(${r},${g},${b},${opacity.value})`;
+    //     }
+    // });
+    if(type==='font') {
+        note.style.color = `rgba(${r},${g},${b},${opacity.value})`;
+        event.target.style.color = `rgba(${r},${g},${b},${opacity.value})`;
+    }
+    else if(type==='outline') {
+        note.style.background = `rgba(${r},${g},${b},${opacity.value})`;
+        event.target.style.background = `rgba(${r},${g},${b},${opacity.value})`;
+    }
 }
 function closeColorModal(modal) {
+    colorModalOpen=false;
     modal.remove();
 }
 function toRGBA(colorStr) {
@@ -1562,16 +2303,16 @@ function createColorPickModal () {
             <div class="CurrentColorBlock"></div>
             <div class="color-inputs">
                 <div class="color-row">
-                    <label for="red">R:</label><input type="text" name="red" class="red">
-                    <label for="hue">H:</label><input type="text" name="hue" class="hue">
+                    <label for="red">R:</label><input type="number" name="red" class="red">
+                    <label for="hue">H:</label><input type="number" name="hue" class="hue">
                 </div>
                 <div class="color-row">
-                    <label for="green">G:</label><input type="text" name="green" class="green">
-                    <label for="saturation">S:</label><input type="text" name="saturation" class="saturation">
+                    <label for="green">G:</label><input type="number" name="green" class="green">
+                    <label for="saturation">S:</label><input type="number" name="saturation" class="saturation">
                 </div>
                 <div class="color-row">
-                    <label for="blue">B:</label><input type="text" name="blue" class="blue">
-                    <label for="lightness">L:</label><input type="text" name="lightness" class="lightness">
+                    <label for="blue">B:</label><input type="number" name="blue" class="blue">
+                    <label for="lightness">L:</label><input type="number" name="lightness" class="lightness">
                 </div>
             </div>
         </div>
@@ -1598,7 +2339,7 @@ function lerpColor(color1, color2, factor) {
     return { r, g, b };
 }
 
-function setColorSlider(baseColor, previusColor, modal, event) {
+function setColorSlider(baseColor, previusColor, modal, event, type) {
     const { r, g, b } = baseColor;
     
     // Dark shade
@@ -1631,7 +2372,7 @@ function setColorSlider(baseColor, previusColor, modal, event) {
         // Also move the color pointer based on the newly selected color
         moveColorPointer(h, s, l);
         setColor(`rgba(${selectedColor.r},${selectedColor.g},${selectedColor.b},${opacity.value})`, previusColor, modal)
-        updateFontColor(event, opacity, modal);
+        updateFontColor(event, opacity, modal, type);
         return selectedColor;
     };
 }
@@ -1708,6 +2449,615 @@ function moveColorPointer(h, s, l) {// @param is equal to (r,g,b) or (h,s,l) if 
     const colorPointer = document.querySelector(".color-pointer");
     colorPointer.style.left = `${leftPosition}px`;
     colorPointer.style.top = `${topPosition}px`;
+}
+
+function createFontModal() {
+    let modal = document.createElement('div');
+    modal.classList.add('modal-font');
+    let fontPickModalContent = `
+        <div class="modal-content-font">
+            <div class="font-list-wrap">
+                <span class="font-label">Font Style:</span>
+                <div class="font-list">
+                    <div class="font-list-item" id="recent-fonts" style="display:none;">
+                    </div>
+                    <div class="font-list-item" style="height:20px;"></div>
+                    <div class="font-list-item" style="font-family: Arial;">Arial</div>
+                    <div class="font-list-item" style="font-family: Verdana;">Verdana</div>
+                    <div class="font-list-item" style="font-family: 'Times New Roman';">Times New Roman</div>
+                    <div class="font-list-item" style="font-family: Tahoma;">Tahoma</div>
+                    <div class="font-list-item" style="font-family: 'Trebuchet MS';">Trebuchet MS</div>
+                    <div class="font-list-item" style="font-family: 'Georgia';">Georgia</div>
+                    <div class="font-list-item" style="font-family: 'Courier New';">Courier New</div>
+                    <div class="font-list-item" style="font-family: 'Lucida Sans Unicode';">Lucida Sans Unicode</div>
+                    <div class="font-list-item" style="font-family: 'Arial Black';">Arial Black</div>
+                    <div class="font-list-item" style="font-family: 'Comic Sans MS';">Comic Sans MS</div>
+                    <div class="font-list-item" style="font-family: Impact;">Impact</div>
+                    <div class="font-list-item" style="font-family: 'Palatino Linotype';">Palatino Linotype</div>
+                    <div class="font-list-item" style="font-family: 'Book Antiqua';">Book Antiqua</div>
+                    <div class="font-list-item" style="font-family: 'Century Gothic';">Century Gothic</div>
+                    <div class="font-list-item" style="font-family: 'Lucida Console';">Lucida Console</div>
+                    <div class="font-list-item" style="font-family: 'Gill Sans MT';">Gill Sans MT</div>
+                    <div class="font-list-item" style="font-family: 'Franklin Gothic Medium';">Franklin Gothic Medium</div>
+                    <div class="font-list-item" style="font-family: 'Consolas';">Consolas</div>
+                    <div class="font-list-item" style="font-family: 'Cambria';">Cambria</div>
+                    <div class="font-list-item" style="font-family: 'Candara';">Candara</div>
+                    <div class="font-list-item" style="font-family: 'Baskerville';">Baskerville</div>
+                    <!-- ... and even more fonts as needed -->
+                </div>
+            </div>
+            <div class="font-wrapper">
+                <form id="app-cover" class="font-style">
+                    <label class="font-label" for="font-style">Font Style:</label>
+                    <div class="style-list">
+                        <div class="font-list-item" style="height:18px;"></div>
+                        <div class="font-list-item" style="font-style:normal;">Regular</div>
+                        <div class="font-list-item" style="font-style:italic;">Italic</div>
+                        <div class="font-list-item" style="font-weight:bold;">Bold</div>
+                        <div class="font-list-item" style="font-style:italic; font-weight:bold;">Bold Italic</div>
+                    </div>
+                    
+                </form>
+                <div class="font-size">
+                    <label class="font-label" for="fontSize">Font Size:</label>
+                    <span class="font-size-display"></span>
+                    <input type="range" min="10" max="118" id="fontSize">
+
+                    <label class="form-control size" style="margin-top:14px;">
+                        <input type="checkbox" name="checkbox" />
+                        size relative to container
+                    </label>
+                </div>
+            </div>
+            <div class="font-effects">
+                <form class="form-effects" action="">
+                    <label class="form-control">
+                    <input type="checkbox" name="checkbox" />
+                    Strikethrough
+                    </label>
+
+                    <label class="form-control">
+                    <input type="checkbox" name="checkbox" />
+                    Superscript
+                    </label>
+
+                    <label class="form-control">
+                    <input type="checkbox" name="checkbox" />
+                    Underlined
+                    </label>
+
+                    <label class="form-control">
+                    <input type="checkbox" name="checkbox" />
+                    Overlined
+                    </label>
+                    
+                    <div class="caps-effects">
+                        <label class="form-control">
+                        <input type="checkbox" name="checkbox" />
+                        Small caps
+                        </label>
+
+                        <label class="form-control">
+                        <input type="checkbox" name="checkbox" />
+                        All caps
+                        </label>
+                    </div>
+                </form>
+            </div>
+
+            <div class="paragraph-options">
+                <span class = "paragraph-options-header">Paragraph options:</span>
+                <div class="text-alignment"> 
+                    <span class = "text-aligment-header">Text Aligment:</span>
+                    <button class="align-left"></button>
+                    <button class="align-center"></button>
+                    <button class="align-right"></button>
+                    <button class="align-justify"></button>
+                </div>
+                <div class="line-height">
+                    <label for="lineHeight" style="grid-column: 1; grid-row: 1; align-self: self-end;">Line Height:</label>
+                    <span class="lineHeightVal">val</span>
+                    <input type="range" id="lineHeight" min="1" max="3" step="0.1">
+                </div>
+                <div class="p-padding">
+                    <label for="padding-font" style="grid-row: 1; grid-column: 1/3;">Padding:</label>
+                    <div class="padding-list">
+                        <div class="padding-direction" style="height:20px;">All</div>
+                        <div class="padding-direction">All</div>
+                        <div class="padding-direction">Right</div>
+                        <div class="padding-direction">Left</div>
+                        <div class="padding-direction">Top</div>
+                        <div class="padding-direction">Bottom</div>
+                    </div>
+                    <input type="number" id="padding-font" value="0" min="-420" max="420">
+                </div>
+            </div>
+
+            <div class="preset-section">
+                <span class="preset-header">Presets</span>
+                <button class="save-preset-btn">Save Current as Preset</button>
+                <div class="preset-list">
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <div class="preset-item">NaN
+                    </div>
+                    <!-- Dynamically populate with user's saved presets -->
+                </div>
+            </div>
+
+            <div class="font-preview">
+                <div class="preview-box">
+                    <span class="preview-box-font">Preview</span>
+                </div>
+            </div>
+            <div class="font-modal-close-buttons">
+                <button class="saveButton my-btn-dark-theme">Save</button>
+                <button class="cancelButton my-btn-dark-theme">Cancel</button>
+            </div>
+        </div>
+    `
+    modal.innerHTML = fontPickModalContent;
+    document.body.appendChild(modal);
+    return modal;
+}
+function showFontPickModal(event) {
+    colorModalOpen = true;
+    var currentPaddingPos = 'All';
+    modal = createFontModal();
+    var openedElement = 'none';
+    var currentFont = window.getComputedStyle(event.target).getPropertyValue('font-family');
+    const previousFont = currentFont;
+
+    var currentStyle = {style: window.getComputedStyle(event.target).getPropertyValue('font-style') , weight: window.getComputedStyle(event.target).getPropertyValue('font-weight')}
+    const previousStyle = currentStyle;
+    const currentFontColor = window.getComputedStyle(event.target).getPropertyValue('color');
+    const currentBackground = window.getComputedStyle(event.target).getPropertyValue('background');
+    
+    const fontList = modal.querySelector('.font-list');
+    const styleList = modal.querySelector('.style-list');
+    const paragraphOptions = modal.querySelector('.paragraph-options');
+    const paddingList = paragraphOptions.querySelector('.padding-list');
+    const fontSizeRange = modal.querySelector('#fontSize');
+    
+    fontSizeRange.value = window.getComputedStyle(event.target).getPropertyValue('font-size');
+    fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
+    
+    const previousSize = fontSizeRange.value;
+    
+    const fontEffects = modal.querySelector('.form-effects');
+    const fontPreview = modal.querySelector('.font-preview');
+    const buttons = modal.querySelector('.font-modal-close-buttons');
+    const noteContainer = event.target.parentElement;
+    const note = noteContainer.querySelector('.textbox');
+    
+    fontPreview.querySelector('.preview-box').style.background = window.getComputedStyle(note).getPropertyValue('background');
+    fontPreview.querySelector('.preview-box-font').style.color = window.getComputedStyle(note).getPropertyValue('color');
+    console.log(event.target);
+    modal.addEventListener('click', (event) => {
+        if(event.target.parentElement.className===openedElement) {
+            return;
+        }
+        if(openedElement==='font-list') {
+            fontList.style.height = '41.8px';
+            fontList.scrollTo(0,0);
+            fontList.style.overflowY = 'hidden';
+            openedElement = 'none';
+        }
+        else if (openedElement === 'style-list') {
+            styleList.style.height = '39.87px';
+            styleList.scrollTo(0,0)
+            styleList.style.overflowY = 'hidden';
+            openedElement = 'none';
+        }
+        else if (openedElement === 'padding-list') {
+            paddingList.style.height = '41.8';
+            paddingList.scrollTo(0,0)
+            paddingList.style.overflowY = 'hidden';
+            openedElement = 'none';
+        }
+    });
+
+    fontList.addEventListener('click', (event) => {
+        const target = event.target;
+        openedElement = 'font-list';
+        if((target.innerHTML === '')) {
+            target.style.display='none';
+            fontList.style.height = '210px';
+            fontList.style.overflowY = 'auto';
+            // fontList.style.height = '11.1vh';
+        }else if((target === fontList.children[1])) {
+            // fontList.style.height = '11.1vh';
+            fontList.style.height = '210px';
+            target.style.display='none';
+            fontList.style.overflowY = 'auto';
+        }
+        
+        else {
+            currentFont = window.getComputedStyle(target).getPropertyValue('font-family');
+            fontList.children[1].style.display = 'block';
+            fontList.children[1].innerHTML = target.innerHTML;
+            // fontList.style.height = '2.22vh';
+            fontList.style.height = '41.8px';
+            fontList.scrollTo(0,0);
+            fontList.style.overflowY = 'hidden';
+            openedElement = 'none';
+            updateFont('font', true, target);
+        }
+    });
+
+    styleList.addEventListener('click', (event) => {
+        const target = event.target;
+        openedElement = 'style-list';
+        if ((target.innerHTML === '')) {
+            target.style.display = 'none';
+            // styleList.style.height = '8.9vh';
+            styleList.style.height = '159.52px';
+            styleList.style.overflowY = 'auto';
+        } else if ((target === styleList.children[0])) {
+            // styleList.style.height = '8.9vh';
+            styleList.style.height = '159.52px';
+            styleList.style.overflowY = 'auto';
+            target.style.display = 'none';
+        } else {
+            const fontStyle = window.getComputedStyle(target).getPropertyValue('font-style');
+            const fontWeight = window.getComputedStyle(target).getPropertyValue('font-weight');
+            
+            if (fontWeight === "700") { // This assumes bold is represented as "700". Adjust if necessary.
+                currentStyle.weight = "bold";
+            } else {
+                currentStyle.weight = "normal";
+            }
+    
+            if (fontStyle === "italic" || fontStyle === "normal") {
+                currentStyle.style = fontStyle;
+            }
+    
+            styleList.children[0].style.display = 'block';
+            styleList.children[0].innerHTML = target.innerHTML;
+            // styleList.style.height = '2.1vh';
+            styleList.style.height = '39.87px';
+            styleList.scrollTo(0,0)
+            styleList.style.overflowY = 'hidden';
+            openedElement = 'none';
+            updateFont('style', true, target);
+        }
+    });
+
+    fontSizeRange.addEventListener('input', (e)=> {
+        fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
+        updateFont('size', true, e.target);
+    });
+    fontSizeRange.parentElement.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+        if(this.checked) {
+            sizeRelative = true;
+            growFont(note);
+        }else {
+            sizeRelative = false;
+        }
+    });
+
+    const effects = fontEffects.querySelectorAll('.form-control');
+    effects.forEach((effect) => {
+        if(effect.parentElement.className==='form-effects') {
+            console.log('\n\n\n'+effect.querySelector('input[type="checkbox"]'));
+            effect.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+                if(this.checked) {
+                    updateFont(effect.innerHTML, true, effect);
+                }else {
+                    console.log('\n\n\nno' + effect.innerHTML.slice(22,effect.innerHTML.length));
+                    updateFont(effect.innerHTML, false, effect);
+                }
+            });
+        } else {
+            effect.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+                if(this.checked) {
+                    if(effect.innerHTML.includes('Small')) {
+                        effect.nextElementSibling.querySelector('input[type="checkbox"]').checked = false;
+                        updateFont('All caps', false, effect);
+                        updateFont(effect.innerHTML, true, effect);
+                    }else {
+                        effect.previousElementSibling.querySelector('input[type="checkbox"]').checked = false;
+                        updateFont('Small caps', false, effect);
+                        updateFont(effect.innerHTML, true, effect);
+                    }
+                }else {
+                    updateFont(effect.innerHTML, false, effect);
+                }
+            });
+        }
+    });
+
+    paragraphOptions.querySelectorAll('button').forEach((button) => {
+        button.addEventListener('click', () => {
+            const textAlignPos = button.className.slice(6);
+            const preview = fontPreview.querySelector('.preview-box-font');
+            event.target.style.textAlign = textAlignPos;
+            note.style.textAlign = textAlignPos;
+            preview.parentElement.style.justifyContent = textAlignPos;
+        });
+    });
+    paragraphOptions.querySelector('#lineHeight').addEventListener('input', (e) =>{
+        const preview = fontPreview.querySelector('.preview-box-font');
+        
+        e.target.previousElementSibling.innerHTML = e.target.value;
+        note.style.lineHeight = e.target.value;
+        preview.style.lineHeight = e.target.value;
+    });
+    paddingList.addEventListener('click', (event) =>{
+        const target = event.target;
+        openedElement = 'padding-list';
+        if((target.innerHTML === '')) {
+            target.style.display='none';
+            paddingList.style.height = '252px';
+            paddingList.style.overflowY = 'auto';
+        }else if((target === paddingList.children[0])) {
+            paddingList.style.height = '252px';
+            // target.style.display='none';
+            paddingList.style.overflowY = 'auto';
+        }
+        
+        else {
+            currentFont = window.getComputedStyle(target).getPropertyValue('font-family');
+            paddingList.children[0].style.display = 'block';
+            paddingList.children[0].innerHTML = target.innerHTML;
+            // fontList.style.height = '2.22vh';
+            paddingList.style.height = '41.8px';
+            paddingList.scrollTo(0,0);
+            paddingList.style.overflowY = 'hidden';
+            openedElement = 'none';
+            
+            padding = paragraphOptions.querySelector('#padding-font');
+            currentPaddingPos = target.innerHTML;
+            switch(currentPaddingPos) {
+                case 'All':
+                if(note.style.padding === '') {
+                    padding.value = 0;
+                }else {
+                    padding.value = note.style.padding.replace('px', '');
+                }
+                break;
+                case 'Right':
+                if(note.style.paddingRight === '') {
+                    padding.value = 0;
+                }else {
+                    padding.value = note.style.paddingRight.replace('px', '');
+                }
+                break;
+                case 'Left':
+                if(note.style.paddingLeft === '') {
+                    padding.value = 0;
+                }else {
+                    padding.value = note.style.paddingLeft.replace('px', '');
+                }
+                break;
+                case 'Top':
+                if(note.style.paddingTop === '') {
+                    padding.value = 0;
+                }else {
+                    padding.value = note.style.paddingTop.replace('px', '');
+                }
+                break;
+                case 'Bottom':
+                if(note.style.paddingBottom === '') {
+                    padding.value = 0;
+                }else {
+                    padding.value = note.style.paddingBottom.replace('px', '');
+                }
+                break;
+            }
+        }
+    });
+    paragraphOptions.querySelector('#padding-font').addEventListener('input', (e) => {
+        const preview = fontPreview.querySelector('.preview-box-font');
+        if(currentPaddingPos==='All') {
+            note.style.padding = e.target.value+'px';
+        }
+        else {
+            switch(currentPaddingPos) {
+                case 'Right': 
+                note.style.paddingRight = e.target.value+'px';
+                preview.style.paddingRight = e.target.value+'px';
+                break;
+                case 'Left':
+                note.style.paddingLeft = e.target.value+'px';
+                preview.style.paddingLeft = e.target.value+'px';
+                break;
+                case 'Top':
+                note.style.paddingTop = e.target.value+'px';
+                preview.style.paddingTop = e.target.value+'px';
+                break;
+                case 'Bottom':
+                note.style.paddingBottom = e.target.value+'px';
+                preview.style.paddingBottom = e.target.value+'px';
+                break;
+            }
+        }
+    });
+
+    buttons.addEventListener('click', (event) => {
+        if (event.target.innerHTML==='Save') {
+            closeFontModal(modal);
+        }
+        else if (event.target.innerHTML==='Cancel') {
+            updateFont('all', false, event.target);
+            closeFontModal(modal);
+        }
+    });
+
+    function updateFont(param ,flag, target) {
+        const preview = fontPreview.querySelector('.preview-box-font');      
+        if(param==='all') {
+            //revert 
+            //=======
+            //font
+            event.target.style.fontFamily = `${previousFont}`;
+            note.style.fontFamily = `${previousFont}`;
+            // size
+            note.style.fontSize = ` ${previousSize}px`;
+            //style
+            event.target.style.fontStyle = `${previousStyle.style}`;
+            note.style.fontStyle = `${previousStyle.style}`;
+            //weight
+            event.target.style.fontWeight = `${previousStyle.weight}`;
+            note.style.fontWeight = `${previousStyle.weight}`;
+        }
+        if(flag) {
+            if(param==='font') {
+                console.log('font\n\n\n');
+                event.target.style.fontFamily = `${currentFont}`;
+                note.style.fontFamily = `${currentFont}`;
+                preview.style.fontFamily = `${currentFont}`;
+            }
+            else if(param==='size') {
+                // event.target.style = `font-size: ${fontSizeRange.value}px`;
+                note.style.fontSize = `${fontSizeRange.value}px`;
+                preview.style.fontSize = `${fontSizeRange.value}px`;
+            }
+            else if(param==='style') {
+                console.log(currentStyle);
+                //style
+                event.target.style.fontStyle = `${currentStyle.style}`;
+                note.style.fontStyle = `${currentStyle.style}`;
+                preview.style.fontStyle = `${currentStyle.style}`;
+                //weight
+                event.target.style.fontWeight = `${currentStyle.weight}`;
+                note.style.fontWeight = `${currentStyle.weight}`;
+                preview.style.fontWeight = `${currentStyle.weight}`;
+            }
+            else{
+                if(param.includes('Strikethrough')) {
+                    console.log('nigger\n\n\n' + event.target.style.textDecorationLine)
+                    ef = event.target.style.textDecorationLine.concat(' ', `line-through`);
+                    console.log('nigger\n\n\n' + ef)
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                }
+                if(param.includes('Superscript')) {
+                    event.target.style.verticalAlign = `super`;
+                    note.style.verticalAlign = `super`;
+                    preview.style.verticalAlign = `super`;
+
+                    note.style.fontSize = `0.8em`;
+                    preview.style.fontSize = `0.8em`;
+                    fontSizeRange.disabled=true;
+
+                    note.style.lineHeight = `1`;
+                    preview.style.lineHeight = `1`;
+                    paragraphOptions.querySelector('#lineHeight').disabled = true;
+                    
+                }
+                if(param.includes('Underlined')) {
+                    ef = event.target.style.textDecorationLine.concat(' ', `underline`);
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                    
+                }
+                if(param.includes('Overlined')) {
+                    ef = event.target.style.textDecorationLine.concat(' ', `overline`);
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                }
+                if(param.includes('Small caps')) {
+                    event.target.style.fontVariant = `small-caps`;
+                    note.style.fontVariant = `small-caps`;
+                    preview.style.fontVariant = `small-caps`;
+                }
+                if(param.includes('All caps')) {
+                    event.target.style.textTransform = `uppercase`;
+                    note.style.textTransform = `uppercase`;
+                    preview.style.textTransform = `uppercase`;
+                }
+            }
+        }else {
+            if(param==='font') {
+                event.target.style.fontFamily = `${previousFont}`;
+                note.style.fontFamily = `${previousFont}`;
+            }
+            else if(param==='size') {
+                note.style.fontSize = `${previousSize}px`;
+            }
+            else if(param==='style') {
+                //style
+                event.target.style.fontStyle = `${previousStyle.style}`;
+                note.style.fontStyle = `${previousStyle.style}`;
+                //weight
+                event.target.style.fontWeight = `${previousStyle.weight}`;
+                note.style.fontWeight = `${previousStyle.weight}`;
+            }
+            else{
+                if(param.includes('Strikethrough')) {
+                    ef = event.target.style.textDecorationLine.replace("line-through", "");
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                }
+                if(param.includes('Superscript')) {
+
+                    event.target.style.verticalAlign = `unset`;
+                    note.style.verticalAlign = `unset`;
+                    preview.style.verticalAlign = `unset`;
+
+                    note.style.fontSize = fontSizeRange.value+'px';
+                    preview.style.fontSize = fontSizeRange.value+'px';
+                    fontSizeRange.disabled=false;
+
+                    note.style.lineHeight = paragraphOptions.querySelector('#lineHeight').value;
+                    preview.style.lineHeight = paragraphOptions.querySelector('#lineHeight').value;
+                    paragraphOptions.querySelector('#lineHeight').disabled = false;
+                    
+                }
+                if(param.includes('Underlined')) {
+                    ef = event.target.style.textDecorationLine.replace("underline", "");
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                    
+                }
+                if(param.includes('Overlined')) {
+                    ef = event.target.style.textDecorationLine.replace("overline", "");
+                    event.target.style.textDecorationLine = ef;
+                    note.style.textDecorationLine = ef;
+                    preview.style.textDecorationLine = ef;
+                }
+                if(param.includes('Small caps')) {
+                    event.target.style.fontVariant = `normal`;
+                    note.style.fontVariant = `normal`;
+                    preview.style.fontVariant = `normal`;
+                }
+                if(param.includes('All caps')) {
+                    event.target.style.textTransform = `unset`;
+                    note.style.textTransform = `unset`;
+                    preview.style.textTransform = `unset`;
+                }
+            }
+        }
+    }
+    window.onclick = function(e) {
+        if (e.target == modal) {
+            updateFont('all', false, e.target);
+            closeFontModal(modal);
+        }
+    }
+
+
+}
+function closeFontModal(modal) {
+    colorModalOpen = false;
+    modal.remove();
+
 }
 
 
