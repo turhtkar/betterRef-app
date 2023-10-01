@@ -105,21 +105,36 @@ textarea:focus {
     padding-top: 24px !important;
 }
 
-.close-button {
+/* .close-button {
     position: absolute;
     top: 15px;
     z-index: inherit;
-    /* right: -10px; */
     width: 30px;
     height: 30px;
     line-height: 20px;
     text-align: center;
     background-color: transparent;
     color: red;
-    /* border-radius: 7px solid; */
     border: transparent;
     cursor: pointer;
     display: none;
+} */
+.close-button {
+  position: absolute;
+  top: -32px;
+  z-index: inherit;
+  /* right: -10px; */
+  width: 32px;
+  height: 30px;
+  line-height: 20px;
+  text-align: center;
+  background-color: #2A2A2A;
+  color: #7A7A7A;
+  border: solid 1px #242222;
+  cursor: pointer;
+  border-radius: 15%;
+  font-size: 25px;
+  display: none;
 }
 .close-button:hover {
     transform: scale(1.24);
@@ -130,7 +145,7 @@ textarea:focus {
 .font-Color-Select {
     background-color: #2A2A2A;
     position: absolute;
-    left: -30px;
+    left: -40px;
     color: #7A7A7A;
     border: solid 1px #242222;
     border-radius: 15%;
@@ -138,11 +153,12 @@ textarea:focus {
     height: 38px;
     font-size: 34px;
     top: 51px;
+    transition: border 0.3s ease;
 }
 .font-Select {
     background-color: #2A2A2A;
     position: absolute;
-    left: -30px;
+    left: -40px;
     color: #7A7A7A;
     border: solid 1px #242222;
     border-radius: 15%;
@@ -150,11 +166,12 @@ textarea:focus {
     height: 38px;
     font-size: 34px;
     top:11px;
+    transition: border 0.3s ease;
 }
 .outline-Color-Select {
     background-color: #2A2A2A;
     position: absolute;
-    left: -30px;
+    left: -40px;
     color: #7A7A7A;
     border: solid 1px #242222;
     border-radius: 15%;
@@ -162,8 +179,11 @@ textarea:focus {
     height: 38px;
     font-size: 34px;
     top: 91px;
+    transition: border 0.3s ease;
 }
-
+.font-Color-Select:hover , .outline-Color-Select:hover, .font-Select:hover  {
+  border: solid 1px #939393;
+}
 #grid-snap {
     border-radius: 4px;
     /* padding: 2%; */
@@ -213,10 +233,11 @@ textarea:focus {
   height: -webkit-fill-available;
   width: -webkit-fill-available;
   position: absolute;
-  pointer-events:none;
+  /* pointer-events:none; */
   display: none;
   z-index: 100000;
   overflow: visible;
+  /* pointer-events: none; */
 }
 .boundingBox1 {
     border: 2px solid #5ea0e5;

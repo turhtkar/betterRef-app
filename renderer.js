@@ -42,6 +42,23 @@ var isOutofBound = false;
 var selectedElements = null;
 var elementsGrid = null;
 var wrapper = null;
+var gridSnap = null;
+var previousElementGridPos={left:0, top:0};
+
+document.addEventListener('click', function() {
+    //safe keep method for avoiding 'errors' regarding the selection box
+    // by errors I mean, if the user would move the mouse too hard to the corners
+    // then sometimes it would break and add a selection box without removing it
+    var selectionBox = document.querySelector('.selectionBox');
+    if(selectionBox) {
+        selectionBox.remove();
+        selectionBox = null;
+                    
+        initialX = initialY = finalX = finalY = null;
+                    
+        isHolding = false;
+    }
+});
 
 function getOrCreateGrid() {
     let refGrid = document.getElementById('grid-snap');
@@ -69,6 +86,7 @@ function getOrCreateGrid() {
         });
         elementsGrid = elementGrid;
         wrapper = wrapperGrid;
+        gridSnap = refGrid;
         
 
         //make the element grid an interact js object
@@ -209,8 +227,16 @@ window.onload = function() {
 
         interact(refGrid)
             .on('down', function(e) {
+                if(e.button !== 0) {
+                    return;
+                }
                 // const e = event.pointer;
+                console.log(e.target);
                 if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player"))) {
+                    if(multipleSelection) {
+                        deSelectMultiElem();
+                    }
+                    console.log(e.target);
                     initialX = e.clientX;
                     initialY = e.clientY;
 
@@ -223,6 +249,7 @@ window.onload = function() {
             })
             .on('move', function(event) {
                 if (isHolding) {
+                    console.log('nigger \n\n\n\n');
                     finalX = event.clientX;
                     finalY = event.clientY;
 
@@ -261,8 +288,8 @@ window.onload = function() {
                             if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
                                 && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
                                 //the element collided with the selection box so we add it to the element grid
+                                // el.classList.add('selected');
                                 el.classList.add('selected');
-                                console.log('appnded \n\n\n');
                                 //then we showing the bounding box itself of the selected element
                                 // without her handles since we get the handles
                                 // from the element grid
@@ -293,8 +320,8 @@ window.onload = function() {
                                         selectElementGrid.bottom = rect.bottom;
                                     }
                                 }
-                                drawElementGrid(selectElementGrid)
-                                console.log("Selected:" + el);
+                                // elementsGrid.appendChild(el);
+                                drawElementGrid(selectElementGrid);
                             }
                             // let previousSelected = document.querySelectorAll('.selected');
                             // if (previousSelected) {
@@ -324,214 +351,115 @@ window.onload = function() {
                             //     // }
                             // }
                         });
-                        let draggableNotes = document.querySelectorAll(".textboxContainer");
-                        draggableNotes.forEach(el => {
-                            let rect = el.getBoundingClientRect();
-                            if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
-                                && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
-                                //the element collided with the selection box so we add it to the element grid
-                                el.classList.add('selected');
-                                console.log('appnded \n\n\n');
-                                //then we showing the bounding box itself of the selected element
-                                // without her handles since we get the handles
-                                // from the element grid
-                                let boundingBox = el.querySelector('#boundingBox');
-                                if (boundingBox) {
-                                    Array.from(boundingBox.children).forEach(child => {
-                                        child.style.display = 'none';
-                                    });
-                                    boundingBox.style.display = "block";
-                                }
-                                // intialize selected element grid
-                                if (selectElementGrid.left === 0) {
-                                    selectElementGrid.left = rect.left;
-                                    selectElementGrid.top = rect.top;
-                                    selectElementGrid.right = rect.right;
-                                    selectElementGrid.bottom = rect.bottom;
-                                } else {
-                                    if (selectElementGrid.left > rect.left) {
-                                        selectElementGrid.left = rect.left;
-                                    }
-                                    if (selectElementGrid.top > rect.top) {
-                                        selectElementGrid.top = rect.top;
-                                    }
-                                    if (selectElementGrid.right < rect.right) {
-                                        selectElementGrid.right = rect.right;
-                                    }
-                                    if (selectElementGrid.bottom < rect.bottom) {
-                                        selectElementGrid.bottom = rect.bottom;
-                                    }
-                                }
-                                drawElementGrid(selectElementGrid)
-                                console.log("Selected:" + el);
+                        // let draggableNotes = document.querySelectorAll(".textboxContainer");
+                        // draggableNotes.forEach(el => {
+                        //     let rect = el.getBoundingClientRect();
+                        //     if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                        //         && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
+                        //         //the element collided with the selection box so we add it to the element grid
+                        //         el.classList.add('selected');
+                        //         //then we showing the bounding box itself of the selected element
+                        //         // without her handles since we get the handles
+                        //         // from the element grid
+                        //         let boundingBox = el.querySelector('#boundingBox');
+                        //         if (boundingBox) {
+                        //             Array.from(boundingBox.children).forEach(child => {
+                        //                 child.style.display = 'none';
+                        //             });
+                        //             boundingBox.style.display = "block";
+                        //         }
+                        //         // intialize selected element grid
+                        //         if (selectElementGrid.left === 0) {
+                        //             selectElementGrid.left = rect.left;
+                        //             selectElementGrid.top = rect.top;
+                        //             selectElementGrid.right = rect.right;
+                        //             selectElementGrid.bottom = rect.bottom;
+                        //         } else {
+                        //             if (selectElementGrid.left > rect.left) {
+                        //                 selectElementGrid.left = rect.left;
+                        //             }
+                        //             if (selectElementGrid.top > rect.top) {
+                        //                 selectElementGrid.top = rect.top;
+                        //             }
+                        //             if (selectElementGrid.right < rect.right) {
+                        //                 selectElementGrid.right = rect.right;
+                        //             }
+                        //             if (selectElementGrid.bottom < rect.bottom) {
+                        //                 selectElementGrid.bottom = rect.bottom;
+                        //             }
+                        //         }
+                        //         // elementsGrid.appendChild(el);
+                        //         drawElementGrid(selectElementGrid)
+                        //     }else {
+                        //         if(el.classList.contains('selected')) {
+                        //             el.classList.remove('selected');
+                        //             let boundingBox = el.querySelector('#boundingBox');
+                        //             if(boundingBox) {
+                        //                 Array.from(boundingBox.children).forEach(handle => {
+                        //                     handle.style.display = 'block';
+                        //                 });
+                        //                 boundingBox.style.display = 'none';
+                        //             }
+                        //         }
+                        //     }
+                        // });
+                        //check if any element that was selected no longer selected
+                        let previousSelected = document.querySelectorAll('.selected');
+                        if (previousSelected) {
+                            let previousSelectedArray = Array.from(previousSelected);
+                            if(previousSelectedArray.length===1) {
+                                elementsGrid.style.display = 'none';
                             }
-                        });
+                            previousSelectedArray.forEach(selected => {
+                                if(selected !== elementsGrid) {
+                                    let rect = selected.getBoundingClientRect();
+                                    if (!(((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                                    && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom)))) {
+                                        let boundingBox = selected.firstElementChild;
+                                        if (boundingBox) {
+                                            boundingBox.style.display = 'none';
+                                            Array.from(boundingBox.children).forEach(handle => {
+                                                handle.style.display = 'block';
+                                            });
+                                        }
+                                        selected.classList.remove('selected');
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
             })
             .on('up', function(event) {
+
                 if (isHolding) {
                     // Your previous logic on mouseup
                     // ...
-
                     selectionBox.remove();
                     selectionBox = null;
-
+                    
                     initialX = initialY = finalX = finalY = null;
-
+                    
                     isHolding = false;
+                    if(!elementsGrid.classList.contains('selected')) {
+                        return;
+                    }
+                    var selectedElements = refGrid.querySelectorAll('.selected');
+                    var distanceToSubX = (parseFloat(elementsGrid.getAttribute('data-x')) || 0);
+                    var distanceToSubY = (parseFloat(elementsGrid.getAttribute('data-y')) || 0);
+                    Array.from(selectedElements).forEach(selected => {
+                        if(selected !== elementsGrid) {
+                            elementsGrid.appendChild(selected);
+                            var x = (parseFloat(selected.getAttribute('data-x')) || 0) - distanceToSubX;
+                            var y = (parseFloat(selected.getAttribute('data-y')) || 0) - distanceToSubY;
+                            selected.style.transform = `translate(${x}px, ${y}px)`;
+                        }
+                    });
                 }
             });
 
         // Prevent default behavior for dragging and selecting on refGrid
         interact(refGrid).preventDefault('auto');
-        // refGrid.addEventListener("mousedown", (e) => {
-        //     if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player")) ) {
-        //         initialX = e.clientX;
-        //         initialY = e.clientY;
-
-        //         selectionBox = document.createElement("div");
-        //         selectionBox.className = "selectionBox";
-        //         document.body.appendChild(selectionBox);
-        //         console.log(e.target.parentElement.classList);
-        //     }
-        // });
-
-        // refGrid.addEventListener("mousemove", (e) => {
-        //     if (selectionBox) {
-        //         finalX = e.clientX;
-        //         finalY = e.clientY;
-
-        //         let boxX = Math.min(initialX, finalX);
-        //         let boxY = Math.min(initialY, finalY);
-        //         let boxWidth = Math.abs(initialX - finalX);
-        //         let boxHeight = Math.abs(initialY - finalY);
-
-        //         Object.assign(selectionBox.style, {
-        //             left: boxX + "px",
-        //             top: boxY + "px",
-        //             width: boxWidth + "px",
-        //             height: boxHeight + "px"
-        //         });
-        //     }
-        // });
-
-        // refGrid.addEventListener("mouseup", () => {
-        //     if (selectionBox) {
-        //         if(!(finalX!=null && finalY!=null)) {
-        //             return;
-        //         }
-        //         const elementGrid = refGrid.querySelector('.elementGrid');
-        //         var left = initialX;
-        //         var right = finalX;
-        //         var top = initialY;
-        //         var bottom = finalY; 
-        //         var selectElementGrid = {left:0, top:0, right:0, bottom:0};
-        //         if (initialX > finalX) {
-        //             left = finalX;
-        //             right = initialX;
-        //         }
-        //         if (initialY > finalY) {
-        //             top = finalY;
-        //             bottom = initialY;
-        //         }
-        //         let draggableItems = document.querySelectorAll(".draggable");
-        //         draggableItems.forEach(el => {
-        //             let rect = el.getBoundingClientRect();
-        //             if (((rect.left <= left && rect.right>=left) || (rect.left >= left && rect.left<=right))
-        //              && ((rect.top <= top && rect.bottom>=top) || (rect.top >= top && rect.top<=bottom))) {
-        //                 //the element collided with the selection box so we add it to the element grid
-        //                 el.classList.add('selected');
-        //                 console.log('appnded \n\n\n');
-        //                 //then we showing the bounding box itself of the selected element
-        //                 // without her handles since we get the handles
-        //                 // from the element grid
-        //                 let boundingBox = el.querySelector('#boundingBox');
-        //                 if(boundingBox) {
-        //                     Array.from(boundingBox.children).forEach(child => {
-        //                         child.style.display = 'none';
-        //                     });
-        //                     boundingBox.style.display = "block";
-        //                 }
-        //                 // intialize selected element grid
-        //                 if(selectElementGrid.left === 0) {
-        //                     selectElementGrid.left = rect.left;
-        //                     selectElementGrid.top = rect.top;
-        //                     selectElementGrid.right = rect.right;
-        //                     selectElementGrid.bottom = rect.bottom;
-        //                 }else {
-        //                     if(selectElementGrid.left > rect.left) {
-        //                         selectElementGrid.left = rect.left;
-        //                     }
-        //                     if(selectElementGrid.top > rect.top) {
-        //                         selectElementGrid.top = rect.top;
-        //                     }
-        //                     if(selectElementGrid.right < rect.right) {
-        //                         selectElementGrid.right = rect.right;
-        //                     }
-        //                     if(selectElementGrid.bottom < rect.bottom) {
-        //                         selectElementGrid.bottom = rect.bottom;
-        //                     }
-        //                 }
-        //                 drawElementGrid(selectElementGrid)
-        //                 console.log("Selected:" + el);
-        //             }
-        //         });
-        //         let draggableNotes = document.querySelectorAll(".textboxContainer");
-        //         draggableNotes.forEach(el => {
-        //             let rect = el.getBoundingClientRect();
-        //             if (((rect.left <= left && rect.right>=left) || (rect.left >= left && rect.left<=right))
-        //              && ((rect.top <= top && rect.bottom>=top) || (rect.top >= top && rect.top<=bottom))) {
-        //                 //the element collided with the selection box so we add it to the element grid
-        //                 el.classList.add('selected');
-        //                 console.log('appnded \n\n\n');
-        //                 //then we showing the bounding box itself of the selected element
-        //                 // without her handles since we get the handles
-        //                 // from the element grid
-        //                 let boundingBox = el.querySelector('#boundingBox');
-        //                 if(boundingBox) {
-        //                     Array.from(boundingBox.children).forEach(child => {
-        //                         child.style.display = 'none';
-        //                     });
-        //                     boundingBox.style.display = "block";
-        //                 }
-        //                 // intialize selected element grid
-        //                 if(selectElementGrid.left === 0) {
-        //                     selectElementGrid.left = rect.left;
-        //                     selectElementGrid.top = rect.top;
-        //                     selectElementGrid.right = rect.right;
-        //                     selectElementGrid.bottom = rect.bottom;
-        //                 }else {
-        //                     if(selectElementGrid.left > rect.left) {
-        //                         selectElementGrid.left = rect.left;
-        //                     }
-        //                     if(selectElementGrid.top > rect.top) {
-        //                         selectElementGrid.top = rect.top;
-        //                     }
-        //                     if(selectElementGrid.right < rect.right) {
-        //                         selectElementGrid.right = rect.right;
-        //                     }
-        //                     if(selectElementGrid.bottom < rect.bottom) {
-        //                         selectElementGrid.bottom = rect.bottom;
-        //                     }
-        //                 }
-        //                 drawElementGrid(selectElementGrid)
-        //                 console.log("Selected:" + el);
-        //             }
-        //         });
-
-
-        //         selectionBox.remove();
-        //         selectionBox = null;
-        //         console.log(initialX);
-        //         console.log(initialY);
-        //         console.log(finalX);
-        //         console.log(finalY);
-
-        //         initialX=initialY=finalX=finalY=null;
-
-        //     }
-        // });
 
         function drawElementGrid(selectElementGrid) {
             multipleSelection = true;
@@ -543,30 +471,32 @@ window.onload = function() {
             // }
             let elX = (selectElementGrid.left-parseFloat(refGridRect.left).toFixed(2))/scale;
             let elY = (selectElementGrid.top-parseFloat(refGridRect.top).toFixed(2))/scale;
+            elementsGrid.setAttribute('prev-data-x', elX);
+            elementsGrid.setAttribute('prev-data-y', elY);
             elementGrid.setAttribute('data-x', elX);
             elementGrid.setAttribute('data-y', elY);
             elementGrid.style.transform = `translate(${elX}px, ${elY}px)`;
             elementGrid.style.width = ((selectElementGrid.right-selectElementGrid.left)/scale)+'px';
             elementGrid.style.height = ((selectElementGrid.bottom-selectElementGrid.top)/scale)+'px';
             
-            let previousSelected = document.querySelectorAll('.selected');
-            if (previousSelected) {
-                Array.from(previousSelected).forEach(selected => {
-                    let rect = selected.getBoundingClientRect();
-                    if (!(((rect.left <= selectElementGrid.left && rect.right>=selectElementGrid.left) || (rect.left >= selectElementGrid.left && rect.left<=selectElementGrid.right))
-                      && ((rect.top <= selectElementGrid.top && rect.bottom>=selectElementGrid.top) || (rect.top >= selectElementGrid.top && rect.top<=selectElementGrid.bottom)))) {
-                        selected.classList.remove('selected');
-                        let boundingBox = selected.querySelector('#boundingBox');
-                        if(boundingBox) {
-                            Array.from(boundingBox.children).forEach(handle => {
-                                handle.style.display = 'block';
-                            });
-                            boundingBox.style.display = 'none';
-                        }
-                    }
-                });
-                // console.log('\n\n\n\nProblem');
-            }
+            // let previousSelected = document.querySelectorAll('.selected');
+            // if (previousSelected) {
+            //     Array.from(previousSelected).forEach(selected => {
+            //         let rect = selected.getBoundingClientRect();
+            //         if (!(((rect.left <= selectElementGrid.left && rect.right>=selectElementGrid.left) || (rect.left >= selectElementGrid.left && rect.left<=selectElementGrid.right))
+            //           && ((rect.top <= selectElementGrid.top && rect.bottom>=selectElementGrid.top) || (rect.top >= selectElementGrid.top && rect.top<=selectElementGrid.bottom)))) {
+            //             selected.classList.remove('selected');
+            //             let boundingBox = selected.querySelector('#boundingBox');
+            //             if(boundingBox) {
+            //                 Array.from(boundingBox.children).forEach(handle => {
+            //                     handle.style.display = 'block';
+            //                 });
+            //                 boundingBox.style.display = 'none';
+            //             }
+            //         }
+            //     });
+            //     // console.log('\n\n\n\nProblem');
+            // }
         }
 
         let isPanning = false;
@@ -663,7 +593,8 @@ window.onload = function() {
         // Create close button
         let closeButton = document.createElement('button');
         closeButton.className = 'close-button';
-        closeButton.textContent = String.fromCodePoint(0x1F534);
+        // closeButton.textContent = String.fromCodePoint(0x1F534);
+        closeButton.textContent = 'X';
         closeButton.style.display = 'none';
 
         // Add an event listener to handle the close button click
@@ -766,7 +697,7 @@ window.onload = function() {
             interact('.draggable')
                 .draggable({
                     ignoreFrom: '.vidPause',
-                    // inertia: true,
+                    inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
                             // restriction: 'parent',
@@ -774,7 +705,7 @@ window.onload = function() {
                             endOnly: true
                         })
                     ],
-                    // autoScroll: true,
+                    autoScroll: true,
                     listeners: { start: selectListener, move: dragMoveListener, end: endDragListener }
                 })
                 .resizable({
@@ -804,6 +735,10 @@ window.onload = function() {
                     if (closeButton) {
                         closeButton.style.display = 'block';
                         selectedElement = event;
+                        let boundBoxs = document.querySelectorAll("#boundingBox");
+                        boundBoxs.forEach(function(boundBox) {
+                            boundBox.style.display='none';
+                        });
                         let boundingBox = this.querySelector('#boundingBox');
                         if(boundingBox) {
                             boundingBox.style.display = "block";
@@ -846,25 +781,76 @@ document.addEventListener('click', function(event) {
     hideAllCloseButtons();
 });
 
-
-function selectListener(event) {
-    var target = event.target;
-    selectedElements = document.querySelectorAll('.selected');
-    if(!target.classList.contains('selected')) {
-        elementsGrid.style.display = 'none';
-        let previousSelected = document.querySelectorAll('.selected');
-        Array.from(previousSelected).forEach(child => {
-            let boundingBox = child.querySelector('#boundingBox');
+function deSelectMultiElem() {
+    let selectedElems = elementsGrid.children;
+    Array.from(selectedElems).forEach(selected => {
+        if(!selected.classList.contains('square')) {
+            gridSnap.appendChild(selected);
+            var distanceTraveledX = (parseFloat(elementsGrid.getAttribute('data-x')) - parseFloat(elementsGrid.getAttribute('prev-data-x'))) + parseFloat(selected.getAttribute('data-x'));
+            var distanceTraveledY = (parseFloat(elementsGrid.getAttribute('data-y')) - parseFloat(elementsGrid.getAttribute('prev-data-y')) + parseFloat(selected.getAttribute('data-y')));
+            selected.style.transform = `translate(${distanceTraveledX}px, ${distanceTraveledY}px)`;
+            selected.setAttribute('data-x', distanceTraveledX);
+            selected.setAttribute('data-y', distanceTraveledY);
+            let boundingBox = selected.querySelector('#boundingBox');
             if(boundingBox) {
                 Array.from(boundingBox.children).forEach(handle => {
                     handle.style.display = 'block';
                 });
                 boundingBox.style.display = 'none';
-            }        
-            child.classList.remove('selected');
-        });
-    }
+            }
+            selected.classList.remove('selected');
+            
+        }
+    });
+    elementsGrid.style.display = 'none';
+    elementsGrid.classList.remove('selected');
 }
+
+function selectListener(event) {
+    var target = event.target;
+    selectedElements = document.querySelectorAll('.selected');
+    if(elementsGrid.classList.contains('selected')) {
+        if(target.parentElement !== elementsGrid) {
+            elementsGrid.style.display = 'none';
+            deSelectMultiElem();
+        }
+    }
+    target.classList.add('selected');
+    //check if we currently select multiple elements by checking if the elementsGrid is selected.
+    // if so then all the selected elements are childs of elementsGrid
+    // hideAllCloseButtons();
+    // console.log('\n\n\n\n\n' + target.classList);
+    // let closeButton = target.querySelector('.close-button');
+    // selectedElement = 0;
+    // if (closeButton) {
+    //     closeButton.style.display = 'block';
+    //     selectedElement = event;
+    //     let boundingBox = target.querySelector('#boundingBox');
+    //     console.log('\n\n\n\n\n' + boundingBox.id);
+    //     if (boundingBox) {
+    //         boundingBox.style.display = "block";
+    //     }
+    //     // updateBoundingBox(event);
+    //     console.log('this is where u looking for - ');
+    //     console.log(event.target.getBoundingClientRect().x);
+    //     console.log(event.offsetX);
+    // }
+    
+    // if(!target.parentElement.classList.contains('selected')) {
+    //     let previousSelected = document.querySelectorAll('.selected');
+    //     Array.from(previousSelected).forEach(child => {
+    //         let boundingBox = child.querySelector('#boundingBox');
+    //         if(boundingBox) {
+    //             Array.from(boundingBox.children).forEach(handle => {
+    //                 handle.style.display = 'block';
+    //             });
+    //             boundingBox.style.display = 'none';
+    //         }        
+    //         child.classList.remove('selected');
+    //     });
+    // }
+}
+
 function dragMoveListener(event) {
     var target = event.target;
     // var wrapper = document.querySelector('.wrapper-grid');
@@ -872,7 +858,7 @@ function dragMoveListener(event) {
     // var elementGrid = document.querySelector('.elementGrid');
     var grid = false
     isDragging = true;
-    event.target.style.zIndex = 1000;
+    event.target.style.zIndex = ++zIndex;
     if(load===0) {
         console.log('save pos');
         var positions = savePositions();
@@ -884,40 +870,23 @@ function dragMoveListener(event) {
         load++;
     }
     if(elementsGrid.classList.contains('selected')) {
+        var x = (parseFloat(elementsGrid.getAttribute('data-x')) || 0) + (event.dx/scale);
+        var y = (parseFloat(elementsGrid.getAttribute('data-y')) || 0) + (event.dy/scale);
+        if(y>=0 && x>=0 && !isOutofBound){
+            elementsGrid.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+            elementsGrid.setAttribute('data-x', x);
+            elementsGrid.setAttribute('data-y', y);
+        }
+    
+        getOutOfBoundTravel(elementsGrid);
+        return;
+    }
+    if(elementsGrid.classList.contains('selected')) {
         grid = true;
     }
     var x = (parseFloat(target.getAttribute('data-x')) || 0) + (event.dx/scale);
     var y = (parseFloat(target.getAttribute('data-y')) || 0) + (event.dy/scale);
-    // console.log(x + ' this is the current x');
-    // console.log((event.dx/scale) + ' this is the (event.dx/scale)');
-    // console.log(parseFloat(target.getAttribute('data-x')) + ' this is data X');
-    // console.log(event.dx + ' this is the current dx');
-    // console.log(event.dy + ' this is the current dy');
-    if (target.className.includes('selected')) {
-        selectedElements.forEach(el => {
-            if(el !== event.target) {
-                let elX = (parseFloat(el.getAttribute('data-x')) || 0) + (event.dx/scale);
-                let elY = (parseFloat(el.getAttribute('data-y')) || 0) + (event.dy/scale);
-                if((elX>0 && elY>0)) {
-                    if(isOutofBound===true && el === elementsGrid) {
-                        isOutofBound = false;
-                    }
-                    if(!isOutofBound) {
-                        el.style.transform = 'translate(' + elX + 'px, ' + elY + 'px)';
-                        el.setAttribute('data-x', elX);
-                        el.setAttribute('data-y', elY);
-                    }
-                }else{
-                    isOutofBound = true;
-                    return;
-
-                }
-            }
-        });
-        console.log(elementsGrid);
-        getOutOfBoundTravel(elementsGrid);
-    }
-
+    
     if(y>=0 && x>=0 && !isOutofBound){
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
@@ -971,7 +940,6 @@ function getOutOfBoundTravel(event) {
     lastPos.left = (boundRect.x-targetRect.x)/scale;
     lastPos.right = (targetRect.right-boundRect.right)/scale;
     lastPos.top = (boundRect.top-targetRect.top)/scale;
-    console.log(lastPos.top);
     lastPos.bottom = (targetRect.bottom-boundRect.bottom)/scale;
     if(lastPos.bottom>0 || lastPos.right>0) {
         resizeCanvas();
@@ -986,7 +954,7 @@ function resizeCanvas() {
     // boundBox = document.getElementById('boundingBox');
     // var boundBoxX = boundBox.getBoundingClientRect().x;
     // var boundBoxY = boundBox.getBoundingClientRect().y;
-    console.log('this is the grid y - ' + boundRect.y);
+    // console.log('this is the grid y - ' + boundRect.y);
     if (lastPos.right>0) {
         pos.right += lastPos.right;
         contStyle.width = ((boundRect.width/scale + lastPos.right) + 'px');
@@ -1055,11 +1023,18 @@ function resizeMoveListener(event) {
 
 interact('.draggable').on('tap', function (event) {
     let target = event.currentTarget;
+    //check if we currently select multiple elements by checking if the elementsGrid is selected.
+    // if so then all the selected elements are childs of elementsGrid
+    if(target.parentElement !== elementsGrid) {
+        if(elementsGrid.classList.contains('selected')) {
+            deSelectMultiElem();
+        }
+    }
     // Hide the bounding box for any previous selected element
     let previousSelected = document.querySelectorAll('.selected');
     if (previousSelected) {
         Array.from(previousSelected).forEach(selected => {
-            if(selected===event) {
+            if(selected === target) {
                 return;
             }
             selected.classList.remove('selected');
@@ -1079,7 +1054,6 @@ interact('.draggable').on('tap', function (event) {
 
     // Show the bounding box for the new selected element
     target.classList.add('selected');
-    target.style.zIndex = zIndex++;
     // updateBoundingBox(event);
 
     //play/pause video if the target is played
@@ -1093,7 +1067,6 @@ interact('.draggable').on('tap', function (event) {
 
 interact('#grid-snap').on('tap', function(event) {
     // if the clicked element is not an image, hide the bounding box
-
     var target = event.target;
     while(target) {
         if(target.classList.contains("textboxContainer") || target.classList.contains("draggable") || target.classList.contains("player")) {
@@ -1102,10 +1075,14 @@ interact('#grid-snap').on('tap', function(event) {
         target = target.parentElement;
     }
     if (!event.target.classList.contains('draggable')) {
-        console.log(event.target);
+        //check if we currently select multiple elements by checking if the elementsGrid is selected.
+        // if so then all the selected elements are childs of elementsGrid
+        if(elementsGrid.classList.contains('selected')) {
+            deSelectMultiElem();
+            return;
+        }
         let previousSelected = document.querySelectorAll('.selected');
         if (previousSelected) {
-            // alert('no boundbox')
             Array.from(previousSelected).forEach(selected => {
                 selected.classList.remove('selected');
                 if(multipleSelection) {
@@ -1114,10 +1091,10 @@ interact('#grid-snap').on('tap', function(event) {
                 }
                 let boundingBox = selected.querySelector('#boundingBox');
                 if(boundingBox) {
-                    boundingBox.style.display = 'none';
                     Array.from(boundingBox.children).forEach(handle => {
                         handle.style.display = 'block';
                     });
+                    boundingBox.style.display = 'none';
                 }
             });
             // console.log('\n\n\n\nProblem');
@@ -1227,7 +1204,8 @@ function createNewNote() {
     });
     const closeButton = document.createElement('button');
     closeButton.className = 'close-button';
-    closeButton.textContent = String.fromCodePoint(0x1F534);
+    // closeButton.textContent = String.fromCodePoint(0x1F534);
+    closeButton.textContent = 'X';
     closeButton.style.display = 'none'; // initially, the close button is hidden
     
     const fontColorButton = document.createElement('button');
@@ -1277,13 +1255,14 @@ function createNewNote() {
         if (closeButton) {
             closeButton.style.display = 'block';
             selectedElement = event;
-            // let boundingBox = this.querySelector('#boundingBox');
-            // if(boundingBox) {
-            //     boundingBox.style.display = "block";
-            // }
+            if(event.target.disabled) {
+                let boundingBox = this.querySelector('#boundingBox');
+                if(boundingBox) {
+                    boundingBox.style.display = "block";
+                }
+            }
         }
     });
-    
 
     interact('.textboxContainer')
         .draggable({
@@ -1296,14 +1275,14 @@ function createNewNote() {
                 })
             ],
             autoScroll: true,
-            listeners: { start: [disableNoteState, showBoundingBox] , move: [dragMoveListener], end: [endDragListener,showBoundingBox] }
+            listeners: { start: [disableNoteState, showBoundingBox, deSelectMultiElem] , move: [dragMoveListener], end: [endDragListener,showBoundingBox] }
         })
         .resizable({
             enabled: true,
             edges: { left: true, right: true, bottom: true, top: true },
             margin: 10,
             preserveAspectRatio: true,
-            listeners: { start: [disableNoteState, showBoundingBox] ,move: [resizeMoveListener], end:[endResizeListener,growFont,showBoundingBox] },
+            listeners: { start: [disableNoteState, showBoundingBox, deSelectMultiElem] ,move: [resizeMoveListener], end:[endResizeListener,growFont,showBoundingBox] },
             modifiers: [
                 interact.modifiers.restrictEdges({
                     outer: 'parent',
@@ -1328,6 +1307,8 @@ function createNewNote() {
             textbox.querySelector('.outline-Color-Select').style.display = 'block';
             interact('.textboxContainer').draggable({enabled:false});
             interact('.textboxContainer').resizable({ enabled: false });
+            // event.target.style.pointerEvents
+            //deSelectMultiElem();
             showBoundingBox(event, false)
             window.requestAnimationFrame(() => {
                 showBoundingBox(event, false);
@@ -1336,6 +1317,12 @@ function createNewNote() {
         })
         .on('tap', (event) => {
             if(event.target.disabled) {
+                //check if we currently select multiple elements by checking if the elementsGrid is selected.
+                // if so then all the selected elements are childs of elementsGrid
+                if(elementsGrid.classList.contains('selected')) {
+                    deSelectMultiElem();
+                    return;
+                }
                 // Hide the bounding box for any previous selected element
                 let previousSelected = document.querySelectorAll('.selected');
                 if (previousSelected) {
@@ -1355,7 +1342,7 @@ function createNewNote() {
                     });
                 }
                 console.log('im the p')
-                event.target.classList.add('selected');
+                // event.target.classList.add('selected');
                 showBoundingBox(event, true);
             }
         });
@@ -1373,7 +1360,7 @@ function createNewNote() {
                 boundBox.style.display='none';
             });
         }
-    })
+    });
 }
 function showBoundingBox(event, state=true) {
     var target;
