@@ -893,14 +893,6 @@ function dragMoveListener(event) {
     // console.log(parseFloat(target.getAttribute('data-x')) + ' this is data X');
     // console.log(event.dx + ' this is the current dx');
     // console.log(event.dy + ' this is the current dy');
-    if(y>=0 && x>=0 && !isOutofBound){
-        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
-        target.setAttribute('data-x', x);
-        target.setAttribute('data-y', y);
-        translation.x = x;
-        translation.y = y;
-    }
-
     if (target.className.includes('selected')) {
         selectedElements.forEach(el => {
             if(el !== event.target) {
@@ -925,6 +917,15 @@ function dragMoveListener(event) {
         console.log(elementsGrid);
         getOutOfBoundTravel(elementsGrid);
     }
+
+    if(y>=0 && x>=0 && !isOutofBound){
+        target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
+        target.setAttribute('data-x', x);
+        target.setAttribute('data-y', y);
+        translation.x = x;
+        translation.y = y;
+    }
+
     getOutOfBoundTravel(event.target);
 }
 
@@ -1058,6 +1059,9 @@ interact('.draggable').on('tap', function (event) {
     let previousSelected = document.querySelectorAll('.selected');
     if (previousSelected) {
         Array.from(previousSelected).forEach(selected => {
+            if(selected===event) {
+                return;
+            }
             selected.classList.remove('selected');
             if(multipleSelection) {
                 document.querySelector('.elementGrid').style.display = 'none';
@@ -1075,6 +1079,7 @@ interact('.draggable').on('tap', function (event) {
 
     // Show the bounding box for the new selected element
     target.classList.add('selected');
+    target.style.zIndex = zIndex++;
     // updateBoundingBox(event);
 
     //play/pause video if the target is played
@@ -1088,6 +1093,7 @@ interact('.draggable').on('tap', function (event) {
 
 interact('#grid-snap').on('tap', function(event) {
     // if the clicked element is not an image, hide the bounding box
+
     var target = event.target;
     while(target) {
         if(target.classList.contains("textboxContainer") || target.classList.contains("draggable") || target.classList.contains("player")) {
@@ -1099,6 +1105,7 @@ interact('#grid-snap').on('tap', function(event) {
         console.log(event.target);
         let previousSelected = document.querySelectorAll('.selected');
         if (previousSelected) {
+            // alert('no boundbox')
             Array.from(previousSelected).forEach(selected => {
                 selected.classList.remove('selected');
                 if(multipleSelection) {
@@ -1107,10 +1114,10 @@ interact('#grid-snap').on('tap', function(event) {
                 }
                 let boundingBox = selected.querySelector('#boundingBox');
                 if(boundingBox) {
+                    boundingBox.style.display = 'none';
                     Array.from(boundingBox.children).forEach(handle => {
                         handle.style.display = 'block';
                     });
-                    boundingBox.style.display = 'none';
                 }
             });
             // console.log('\n\n\n\nProblem');
