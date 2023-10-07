@@ -44,6 +44,8 @@ var elementsGrid = null;
 var wrapper = null;
 var gridSnap = null;
 var previousElementGridPos={left:0, top:0};
+var interactableElements=[];
+var isSnappingEnabled = false;
 
 document.addEventListener('click', function() {
     //safe keep method for avoiding 'errors' regarding the selection box
@@ -693,20 +695,76 @@ window.onload = function() {
             // Append the container to the grid-snap
             refGrid.appendChild(container);
 
+
+
             // make the new image draggable and resizable
+            var interactElements = [];
             interact('.draggable')
                 .draggable({
                     ignoreFrom: '.vidPause',
                     inertia: true,
                     modifiers: [
                         interact.modifiers.restrictRect({
-                            // restriction: 'parent',
                             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
                             endOnly: true
+                        }),
+                        interact.modifiers.snap({
+                            targets: interactElements,
+                            relativePoints: [{ x: 0.5, y: 0.5 }]
                         })
                     ],
                     autoScroll: true,
-                    listeners: { start: selectListener, move: dragMoveListener, end: endDragListener }
+                    listeners: { start: [function(event) {
+                        // if I just enabled snapping
+                        if(isSnappingEnabled) {
+                            console.log(interactElements)
+                            interactElements.length = 0; // Clear existing targets  
+                            const targetRect = event.target.getBoundingClientRect();
+                            const gridSnap = document.querySelector('#grid-snap');
+                            const gridSnapRect = gridSnap.getBoundingClientRect();
+                            interactableElements.forEach(element => {
+                                if(element !== event.target){
+                                    const rect = element.getBoundingClientRect();
+                                    // var topY = ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2);
+                                    
+                                    //Top Left
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(targetRect.height/2)), element, range: 100 });
+                                    //center Left
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+((rect.height*scale)/2)), element, range: 100 });
+                                    //Bottom Left
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(rect.height*scale)-(targetRect.height/2)), element, range: 100 });
+
+                                    //Top Right
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(targetRect.height/2)) ,element, range: 100 });
+                                    //center Right
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+((rect.height*scale)/2)) ,element, range: 100 });
+                                    //Bottom Right
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(rect.height*scale)-(targetRect.height/2)) ,element, range: 100 });
+
+                                    //Left Top
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)) + (gridSnapRect.x) + (targetRect.width/2),y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    //center Top
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+((rect.width*scale)/2)) + (gridSnapRect.x) ,y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    //Right Top
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+(rect.width*scale)) + (gridSnapRect.x) - (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    
+                                    //Left Bottom
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)) + (gridSnapRect.x) + (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
+                                    //center Bottom
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+((rect.width*scale)/2)) + (gridSnapRect.x) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
+                                    //Right Bottom
+                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+(rect.width*scale)) + (gridSnapRect.x) - (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
+
+
+                                }
+
+                            });
+                            console.log(interactElements);
+                            console.log(gridSnapRect.x);
+                        }else {
+                            interactElements.length = 0;
+                        }
+                    } ,selectListener], move: [dragMoveListener], end: [endDragListener, updateSnap] }
                 })
                 .resizable({
                     edges: { left: true, right: true, bottom: true, top: true },
@@ -749,7 +807,84 @@ window.onload = function() {
                         console.log(event.offsetX);
                     }
                 });
+                //gather all the draggable elements in one array
+                // to avoid multiple calls
+                interactableElements.push(container);
             }
+
+        // Define custom snap targets for element-to-element snapping
+        function elementSnapTargets() {
+            // const draggables = Array.from(document.querySelectorAll('.draggable'));
+            if (isSnappingEnabled) {
+                console.log('Snapping is called\n\n')
+                return interactableElements.map(targetElement => {
+                    return {
+                        x: parseFloat(targetElement.getAttribute('data-x') || targetElement.offsetLeft) + targetElement.offsetWidth / 2,
+                        y: parseFloat(targetElement.getAttribute('data-y') || targetElement.offsetTop) + targetElement.offsetHeight / 2,
+                        range: Infinity,
+                        element: targetElement
+                    };
+                });
+            }else {
+                return [];
+            }
+        }
+        // // Function to setup interactables with or without snapping
+        // function setupInteractables() {
+        //     let dragModifiers = [
+        //         interact.modifiers.restrictRect({
+        //             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+        //             endOnly: true
+        //         }),
+        //     ];
+
+        //     if (isSnappingEnabled) {
+        //         dragModifiers.push(
+        //             interact.modifiers.snap({
+        //                 targets: [elementSnapTargets()],
+        //                 relativePoints: [{ x: 0.5, y: 0.5 }]
+        //             })
+        //         );
+        //     }
+        //     console.log(dragModifiers);
+        //     interact('.draggable')
+        //     .draggable({
+        //         ignoreFrom: '.vidPause',
+        //         inertia: true,
+        //         modifiers: [
+        //             interact.modifiers.restrictRect({
+        //             // restriction: 'parent',
+        //             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+        //             endOnly: true
+        //         })],
+        //         autoScroll: true,
+        //         listeners: { start: selectListener, move: dragMoveListener, end: endDragListener }
+        //     })
+        //     .resizable({
+        //         edges: { left: true, right: true, bottom: true, top: true },
+        //         // preserveAspectRatio: false,
+        //         // margin: 10,
+        //         inertia: true,
+        //         modifiers: [
+        //             interact.modifiers.restrictRect({
+        //                 // restriction: 'parent',
+        //                 elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+        //                 endOnly: true
+        //             }),
+        //             interact.modifiers.restrictSize({
+        //                 min: { width: 50, height: 50 },
+        //             }),
+        //         ],
+        //         listeners: { move: resizeMoveListener, end: endResizeListener },
+        //         ignoreFrom: '.vidPause',
+        //     });
+        // }
+        // Toggle function for the context menu
+        function toggleSnapping() {
+            isSnappingEnabled = !isSnappingEnabled;
+            // setupInteractables();
+        }
+        ipcRenderer.on('toggle-snap-elements', toggleSnapping);
 
         // Hide the drop zone
         dropZone.style.opacity = '0';
@@ -3052,6 +3187,26 @@ function closeFontModal(modal) {
     colorModalOpen = false;
     modal.remove();
 
+}
+// var change = false;
+// function checkSnap(event) {
+//     // if I just enabled snapping
+//     if(isSnappingEnabled) {
+//         // interactElements.length = 0; // Clear existing targets  
+//         interactableElements.forEach(element => {
+//             const rect = element.getBoundingClientRect();
+//             return {
+//                 interactElements.push({ x: (parseFloat(element.getAttribute('data-x')) || rect.left), element, range:20 });
+//                 interactElements.push({ x: ((parseFloat(element.getAttribute('data-x'))+(scale*rect.width)) || rect.right), element, range:20 });
+//                 interactElements.push({ y: (parseFloat(element.getAttribute('data-y')) || rect.top), element, range:20 });
+//                 interactElements.push({ y: ((parseFloat(element.getAttribute('data-y'))+(scale*rect.height)) || rect.bottom), element, range:20 });
+//             };
+//         });
+        
+//     }
+// }
+function updateSnap(event) {
+    console.log('update')
 }
 
 

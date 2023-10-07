@@ -42,6 +42,12 @@ function createWindow() {
         win.webContents.send('create-new-note');
       },
     },
+    {
+        label: 'Toggle Snapping',
+        click: () => {
+          win.webContents.send('toggle-snap-elements');
+        },
+      },
   ];
 
   const contextMenu = Menu.buildFromTemplate(template);
@@ -67,5 +73,3 @@ app.on('activate', () => {
     createWindow();
   }
 });
-
-

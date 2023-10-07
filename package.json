@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@electron/remote": "^2.0.10",
-    "interactjs": "^1.10.17"
+    "interactjs": "^1.10.17",
+    "update-electron-app": "^2.0.1"
   }
 }
