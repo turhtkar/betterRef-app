@@ -48,6 +48,12 @@ function createWindow() {
           win.webContents.send('toggle-snap-elements');
         },
       },
+      {
+        label: 'Undo',
+        click: () => {
+          win.webContents.send('undo-element');
+        },
+      },
   ];
 
   const contextMenu = Menu.buildFromTemplate(template);

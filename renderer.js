@@ -46,6 +46,73 @@ var gridSnap = null;
 var previousElementGridPos={left:0, top:0};
 var interactableElements=[];
 var isSnappingEnabled = false;
+var undoList = [];
+
+function storeStyleBeforeChange(element, property, x, y) {
+    // var previousValue = element.style[property];
+    switch(property) {
+        case 'translate': 
+        undoList.push({
+            element: element,
+            property: property,
+            x: x,
+            y: y
+        });
+        break;
+
+        case 'scale3D':
+        undoList.push({
+            element: element,
+            property: property,
+            scale: scale
+        });
+        break;
+        
+    }
+    // console.log('this is the style saved for the undo \n ' + previousValue);
+    // undoList.push({
+    //     element: element,
+    //     property: property,
+    //     value: previousValue
+    // });
+}
+function undoStyle () {
+    if (undoList.length > 0) {
+        
+        var change = undoList.pop();
+        console.log('this is the style to undo \n ' + change);
+        console.log(change instanceof Object);
+        console.log(change.property);
+        if(change instanceof Array) {
+            change.forEach((item) => {
+                item.element.style.transform = `translate(${item.x}px,${item.y}px)`;
+                item.element.setAttribute('data-x', item.x);
+                item.element.setAttribute('data-y', item.y);
+            });
+        }else {
+            if(change.property==='translate') {
+
+                change.element.style.transform = `translate(${change.x}px,${change.y}px)`;
+                change.element.setAttribute('data-x', change.x);
+                change.element.setAttribute('data-y', change.y);
+            }
+            else if(change.property==='scale3D') {
+                change.element.style.transform = `scale3D(${change.scale},${change.scale},${change.scale})`;
+            }
+            else if(change.property==='resize') {
+                console.log(change)
+                change.element.style.transform = `translate(${change.x}px,${change.y}px)`;
+                change.element.setAttribute('data-x', change.x);
+                change.element.setAttribute('data-y', change.y);                
+                change.element.style.height = `${change.height}px`;
+                change.element.style.width = `${change.width}px`;
+            }
+        }
+        
+    }
+}
+ipcRenderer.on('undo-element', undoStyle);
+
 
 document.addEventListener('click', function() {
     //safe keep method for avoiding 'errors' regarding the selection box
@@ -173,7 +240,7 @@ window.onload = function() {
         //Zoom on mouse wheel event
         let accx = 0, accy = 0;
 
-        refGrid.addEventListener("wheel", (e) => {
+        function handleZoom(e) {
             if(e.target !== refGrid) {
                 return;
             }
@@ -192,6 +259,13 @@ window.onload = function() {
                 load++;
             }
             e.preventDefault();
+
+            //add the last styles added to the undo list
+            storeStyleBeforeChange(e.target, 'scale3D', scale);
+            storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
+            // undoList.push(refGrid.style.transform = `scale3D(${scale}, ${scale}, ${scale})`);
+
+
             if (e.deltaY < 0) {
                 scale *= 1.24;
                 accx = lastTransform.x + e.offsetX * scale/1.24 - e.offsetX * scale;
@@ -221,7 +295,8 @@ window.onload = function() {
             //     boundBox.style.transform = 'translate( ' + (translation.x + refGrid.getBoundingClientRect().x)/scale + 'px, ' + (translation.y + refGrid.getBoundingClientRect().y)/scale + 'px)'
             //     boundBox.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
             // }
-        });
+        }
+        refGrid.addEventListener("wheel",handleZoom);
 
         let selectionBox = null;
         let initialX, initialY, finalX, finalY;
@@ -509,6 +584,7 @@ window.onload = function() {
             if (e.button === 1) {  // Check if the middle (wheel) button is pressed
                 isPanning = true;
                 startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
+                storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
             }
             if(load===0) {
                 console.log('save pos');
@@ -725,36 +801,39 @@ window.onload = function() {
                             interactableElements.forEach(element => {
                                 if(element !== event.target){
                                     const rect = element.getBoundingClientRect();
-                                    // var topY = ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2);
+
+                                    const left = (rect.left - ((targetRect.width)/2));
+                                    const right = (rect.right + ((targetRect.width)/2));
+                                    const top = (rect.top+(targetRect.height/2));
+                                    const bottom = (rect.bottom-(targetRect.height/2));
                                     
                                     //Top Left
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(targetRect.height/2)), element, range: 100 });
+                                    interactElements.push({ x: left, y: top, element, range: 100 });
                                     //center Left
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+((rect.height*scale)/2)), element, range: 100 });
+                                    interactElements.push({ x: left, y: (rect.top+((rect.height)/2)), element, range: 100 });
                                     //Bottom Left
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left) + (gridSnapRect.x) - (targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(rect.height*scale)-(targetRect.height/2)), element, range: 100 });
+                                    interactElements.push({ x: left, y: bottom, element, range: 100 });
 
                                     //Top Right
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(targetRect.height/2)) ,element, range: 100 });
+                                    interactElements.push({ x: right, y: top ,element, range: 100 });
                                     //center Right
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+((rect.height*scale)/2)) ,element, range: 100 });
+                                    interactElements.push({ x: right, y: (rect.top+((rect.height)/2)) ,element, range: 100 });
                                     //Bottom Right
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) + (rect.width * scale)) || rect.right) + (gridSnapRect.x) + ((targetRect.width*scale)/2), y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)+(rect.height*scale)-(targetRect.height/2)) ,element, range: 100 });
+                                    interactElements.push({ x: right, y: bottom ,element, range: 100 });
 
                                     //Left Top
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)) + (gridSnapRect.x) + (targetRect.width/2),y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    interactElements.push({ x: rect.left + (targetRect.width/2),y: (rect.top-(targetRect.height)/2), element, range: 70 });
                                     //center Top
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+((rect.width*scale)/2)) + (gridSnapRect.x) ,y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    interactElements.push({ x: (rect.left+((rect.width)/2)) ,y: (rect.top-(targetRect.height)/2), element, range: 70 });
                                     //Right Top
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+(rect.width*scale)) + (gridSnapRect.x) - (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) || rect.top)+(gridSnapRect.y)-(targetRect.height*scale)/2), element, range: 70 });
+                                    interactElements.push({ x: (rect.right) - (targetRect.width/2) ,y: (rect.top-(targetRect.height)/2), element, range: 70 });
                                     
                                     //Left Bottom
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)) + (gridSnapRect.x) + (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
+                                    interactElements.push({ x: rect.left + (targetRect.width/2) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
                                     //center Bottom
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+((rect.width*scale)/2)) + (gridSnapRect.x) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
+                                    interactElements.push({ x: (rect.left+((rect.width)/2)) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
                                     //Right Bottom
-                                    interactElements.push({ x: ((parseFloat(element.getAttribute('data-x')) || rect.left)+(rect.width*scale)) + (gridSnapRect.x) - (targetRect.width/2) ,y: ((parseFloat(element.getAttribute('data-y')) + (rect.height * scale)) || rect.bottom)+((gridSnapRect.y))+((targetRect.height*scale)/2), element, range: 70 });
-
+                                    interactElements.push({ x: (rect.right) - (targetRect.width/2) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
 
                                 }
 
@@ -781,7 +860,17 @@ window.onload = function() {
                             min: { width: 50, height: 50 },
                         }),
                     ],
-                    listeners: { move: resizeMoveListener, end: endResizeListener },
+                    listeners: { start: (event) => {
+                        target = event.target;
+                        undoList.push({
+                            element: target,
+                            property: 'resize',
+                            height: target.getBoundingClientRect().height,
+                            width: target.getBoundingClientRect().width,
+                            x: parseFloat(target.getAttribute('data-x')),
+                            y: parseFloat(target.getAttribute('data-y'))
+                        });
+                    } , move: resizeMoveListener, end: endResizeListener },
                     ignoreFrom: '.vidPause',
                 });
         
@@ -812,77 +901,8 @@ window.onload = function() {
                 interactableElements.push(container);
             }
 
-        // Define custom snap targets for element-to-element snapping
-        function elementSnapTargets() {
-            // const draggables = Array.from(document.querySelectorAll('.draggable'));
-            if (isSnappingEnabled) {
-                console.log('Snapping is called\n\n')
-                return interactableElements.map(targetElement => {
-                    return {
-                        x: parseFloat(targetElement.getAttribute('data-x') || targetElement.offsetLeft) + targetElement.offsetWidth / 2,
-                        y: parseFloat(targetElement.getAttribute('data-y') || targetElement.offsetTop) + targetElement.offsetHeight / 2,
-                        range: Infinity,
-                        element: targetElement
-                    };
-                });
-            }else {
-                return [];
-            }
-        }
-        // // Function to setup interactables with or without snapping
-        // function setupInteractables() {
-        //     let dragModifiers = [
-        //         interact.modifiers.restrictRect({
-        //             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
-        //             endOnly: true
-        //         }),
-        //     ];
-
-        //     if (isSnappingEnabled) {
-        //         dragModifiers.push(
-        //             interact.modifiers.snap({
-        //                 targets: [elementSnapTargets()],
-        //                 relativePoints: [{ x: 0.5, y: 0.5 }]
-        //             })
-        //         );
-        //     }
-        //     console.log(dragModifiers);
-        //     interact('.draggable')
-        //     .draggable({
-        //         ignoreFrom: '.vidPause',
-        //         inertia: true,
-        //         modifiers: [
-        //             interact.modifiers.restrictRect({
-        //             // restriction: 'parent',
-        //             elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
-        //             endOnly: true
-        //         })],
-        //         autoScroll: true,
-        //         listeners: { start: selectListener, move: dragMoveListener, end: endDragListener }
-        //     })
-        //     .resizable({
-        //         edges: { left: true, right: true, bottom: true, top: true },
-        //         // preserveAspectRatio: false,
-        //         // margin: 10,
-        //         inertia: true,
-        //         modifiers: [
-        //             interact.modifiers.restrictRect({
-        //                 // restriction: 'parent',
-        //                 elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
-        //                 endOnly: true
-        //             }),
-        //             interact.modifiers.restrictSize({
-        //                 min: { width: 50, height: 50 },
-        //             }),
-        //         ],
-        //         listeners: { move: resizeMoveListener, end: endResizeListener },
-        //         ignoreFrom: '.vidPause',
-        //     });
-        // }
-        // Toggle function for the context menu
         function toggleSnapping() {
             isSnappingEnabled = !isSnappingEnabled;
-            // setupInteractables();
         }
         ipcRenderer.on('toggle-snap-elements', toggleSnapping);
 
@@ -944,13 +964,27 @@ function deSelectMultiElem() {
 function selectListener(event) {
     var target = event.target;
     selectedElements = document.querySelectorAll('.selected');
+    // storeStyleBeforeChange(event, 'transform');
     if(elementsGrid.classList.contains('selected')) {
+        var selectedList = [];
+        Array.from(selectedElements).forEach((element) => {
+            if(element!==elementsGrid) {
+                selectedList.push({
+                    element: element,
+                    x: parseFloat(element.getAttribute('data-x')),
+                    y: parseFloat(element.getAttribute('data-y'))
+                });
+            }
+        });
+        undoList.push(selectedList);
         if(target.parentElement !== elementsGrid) {
             elementsGrid.style.display = 'none';
             deSelectMultiElem();
         }
+    }else {
+        storeStyleBeforeChange(target, 'translate', parseFloat(target.getAttribute('data-x')), parseFloat(target.getAttribute('data-y')));
+        target.classList.add('selected');
     }
-    target.classList.add('selected');
     //check if we currently select multiple elements by checking if the elementsGrid is selected.
     // if so then all the selected elements are childs of elementsGrid
     // hideAllCloseButtons();
@@ -1642,7 +1676,9 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
     }
     return maxScale;
 }
-
+function handleZoom(event) {
+    
+}
 document.addEventListener('keydown', function(event) {
     if((event.key !== 'ArrowRight') && (event.key !== 'ArrowLeft')) {
         console.log(event.key);
