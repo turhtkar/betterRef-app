@@ -48,6 +48,11 @@ var interactableElements=[];
 var isSnappingEnabled = false;
 var undoList = [];
 
+// function greedyMasonryLayout(elements) {
+    
+
+// }
+
 function storeStyleBeforeChange(element, property, x, y) {
     // var previousValue = element.style[property];
     switch(property) {
@@ -188,7 +193,6 @@ function getOrCreateGrid() {
         //     console.log(e.target);
         //     while (target) {
         //         if (Array.from(elementGrid.children).includes(target)) {
-        //             console.log('nigger\n\n\n\n');
         //             return;
         //         }
         //         target = target.parentElement;
@@ -261,8 +265,8 @@ window.onload = function() {
             e.preventDefault();
 
             //add the last styles added to the undo list
-            storeStyleBeforeChange(e.target, 'scale3D', scale);
-            storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
+            // storeStyleBeforeChange(e.target, 'scale3D', scale);
+            // storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
             // undoList.push(refGrid.style.transform = `scale3D(${scale}, ${scale}, ${scale})`);
 
 
@@ -326,7 +330,6 @@ window.onload = function() {
             })
             .on('move', function(event) {
                 if (isHolding) {
-                    console.log('nigger \n\n\n\n');
                     finalX = event.clientX;
                     finalY = event.clientY;
 
@@ -584,7 +587,7 @@ window.onload = function() {
             if (e.button === 1) {  // Check if the middle (wheel) button is pressed
                 isPanning = true;
                 startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
-                storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
+                // storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
             }
             if(load===0) {
                 console.log('save pos');
@@ -964,7 +967,6 @@ function deSelectMultiElem() {
 function selectListener(event) {
     var target = event.target;
     selectedElements = document.querySelectorAll('.selected');
-    // storeStyleBeforeChange(event, 'transform');
     if(elementsGrid.classList.contains('selected')) {
         var selectedList = [];
         Array.from(selectedElements).forEach((element) => {
@@ -1322,7 +1324,7 @@ function savePositions() {
 
 // JavaScript
 // Create a new draggable text box
-function createNewNote() {
+function createNewNote(event) {
     const textbox = document.createElement('div');
     textbox.className = 'textboxContainer';
     textbox.style.overflow = 'revert';
@@ -1530,6 +1532,7 @@ function createNewNote() {
             });
         }
     });
+    textbox.style.zIndex = zIndex++;
 }
 function showBoundingBox(event, state=true) {
     var target;
@@ -3101,9 +3104,7 @@ function showFontPickModal(event) {
             }
             else{
                 if(param.includes('Strikethrough')) {
-                    console.log('nigger\n\n\n' + event.target.style.textDecorationLine)
                     ef = event.target.style.textDecorationLine.concat(' ', `line-through`);
-                    console.log('nigger\n\n\n' + ef)
                     event.target.style.textDecorationLine = ef;
                     note.style.textDecorationLine = ef;
                     preview.style.textDecorationLine = ef;

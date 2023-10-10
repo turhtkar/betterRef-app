@@ -195,6 +195,7 @@
       /* transform: translate(0px, 0px) scale(1);
       display: flex;
       flex-wrap: wrap; */
+      width: 50%;
       display: flex;
       flex-wrap: wrap;
   }
@@ -1529,3 +1530,4 @@
     background-color: rgba(0, 0, 255, 0.1);
     pointer-events: none; /* Makes sure the box doesn't interfere with other pointer events */
   }
+  
