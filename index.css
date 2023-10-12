@@ -143,10 +143,11 @@
       display: block;
   }
   .font-Color-Select {
-      background-color: #2A2A2A;
+      /* background-color: #2A2A2A; */
+      background-color: rgb(48 48 48 / 50%);
       position: absolute;
       left: -40px;
-      color: #7A7A7A;
+      color: #ebebeb;
       border: solid 1px #242222;
       border-radius: 15%;
       width: 38px;
@@ -156,10 +157,11 @@
       transition: border 0.3s ease;
   }
   .font-Select {
-      background-color: #2A2A2A;
+      /* background-color: #2A2A2A; */
+      background-color: rgb(48 48 48 / 50%);
       position: absolute;
       left: -40px;
-      color: #7A7A7A;
+      color: #ebebeb;
       border: solid 1px #242222;
       border-radius: 15%;
       width: 38px;
@@ -169,20 +171,22 @@
       transition: border 0.3s ease;
   }
   .outline-Color-Select {
-      background-color: #2A2A2A;
+      /* background-color: #2A2A2A; */
+      background-color: rgb(48 48 48 / 50%);
       position: absolute;
       left: -40px;
-      color: #7A7A7A;
+      color: #ebebeb;
       border: solid 1px #242222;
       border-radius: 15%;
       width: 38px;
       height: 38px;
       font-size: 34px;
       top: 91px;
-      transition: border 0.3s ease;
+      transition: all 0.3s ease;
   }
   .font-Color-Select:hover , .outline-Color-Select:hover, .font-Select:hover  {
-    border: solid 1px #939393;
+    border: solid 2px #939393;
+    background-color: #2A2A2A;
   }
   #grid-snap {
       border-radius: 4px;
@@ -916,24 +920,23 @@
       font-size: 42px;
   }
   .modal-content-font {
-      font-family: roboto;
-      font-size: 20px;
-      padding: 20px;
-      background-color: #17171E;
-      border: 1px solid #888;
-      box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
-      color: #7A7A7A;
-      gap: 5px;
-      position: relative;
-      width: 80vw;
-      /* max-width: 802px;
-      max-height: 510px; */
-      max-width: 980px;
-      min-height: 668px;
-      display: grid;
-      /* grid-template-rows: 30% 20% 30% 10%; */
-      grid-template-rows: 20% 15% 11% 23% 20% 5%;
-      grid-template-columns: 1fr 1fr; 
+    font-family: roboto;
+    font-size: 20px;
+    padding: 20px;
+    background-color: #17171E;
+    border: 1px solid #888;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    color: #7A7A7A;
+    gap: 5px;
+    position: relative;
+    width: 80vw;
+    max-width: 980px;
+    min-height: 680px;
+    display: grid;
+    /* grid-template-rows: 30% 20% 30% 10%; */
+    grid-template-rows: 20% 15% 11% 24% 20% 5%;
+    grid-template-columns: 1fr 1fr;
+    padding-top: 40px;
   }
   /* font modal */
   .font-wrapper {
@@ -1319,6 +1322,7 @@
     background-color: #f2f2f2;
     border: none;
     cursor: pointer;
+    font-size: 20px;
     transition: background-color 0.3s ease;
   }
   
@@ -1339,6 +1343,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: border 0.3 ease;
+  }
+  .preset-item:hover {
+    border: 0.03px solid rgba(245, 245, 245, 0.7);
   }
   .text-align-options {
     margin-top: -19px;
@@ -1530,4 +1538,3 @@
     background-color: rgba(0, 0, 255, 0.1);
     pointer-events: none; /* Makes sure the box doesn't interfere with other pointer events */
   }
-  

@@ -28,15 +28,7 @@ let isModalOpen = false;
 let runVid = false;
 var colorModalOpen = false;
 var isInteracting;
-var sizeRelative = false;
-var fontPresetList = [
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false},
-    {innerHTML: 'NaN', fontStyle: 'normal' , fontSize: 20, fontFamily: 'roboto', justifyContent: 'center', padding: '0px', paddingBottom: '0px', paddingLeft:'0px', paddingTop:'0px',paddingRight:'0px', lineHeight:'1', textDecorationLine: '', Superscript: false, SmallCaps: false, AllCaps: false}];
+var globalPresetList = null;
 var multipleSelection = false;
 var isOutofBound = false;
 var selectedElements = null;
@@ -1324,7 +1316,7 @@ function savePositions() {
 
 // JavaScript
 // Create a new draggable text box
-function createNewNote(event) {
+function createNewNote() {
     const textbox = document.createElement('div');
     textbox.className = 'textboxContainer';
     textbox.style.overflow = 'revert';
@@ -1556,9 +1548,6 @@ function showBoundingBox(event, state=true) {
     }
 }
 function growFont(event) {
-    if(!sizeRelative) {
-        return;
-    }
     var target = event.target;
     var textarea;
     // we do this check
@@ -1579,6 +1568,9 @@ function growFont(event) {
         }else {
             textarea = target.querySelector('.textbox');
         }
+    }
+    if(!textarea.parentElement.getAttribute('sizeRelative')) {
+        return;
     }
     // we do this check
     // because in font selection we send the textbox directly
@@ -2134,13 +2126,26 @@ function showColorPickModal(event, type) {
     modal = createColorPickModal();
     const getSpectrumWrapper = () => modal.querySelector(".spectrum-wrapper");
     const opacity = modal.querySelector("#opacity");
-    const previusColor = window.getComputedStyle(event.target).getPropertyValue('color');
-    const previusBackgroundColor = window.getComputedStyle(event.target).getPropertyValue('background');
+    let currentElement = event.target;
+    // Traverse the DOM to find the textarea after the font-Color-Select button
+    while (currentElement && currentElement.tagName.toLowerCase() !== 'textarea') {
+        currentElement = currentElement.nextElementSibling;
+    }
+    const textArea = currentElement;
+    const previusColor = window.getComputedStyle(textArea).getPropertyValue('color');
+    const previusBackgroundColor = window.getComputedStyle(textArea).getPropertyValue('background');
 
     
     opacity.addEventListener('input', () => {
-        const opacityVal = opacity.parentElement.querySelector('opacityVal');
-        opacityVal.value = opacity.value;
+        updateFontColor(event,opacity,modal, type);
+        //set color Block with previous and current color.
+        r = modal.querySelector(".red").value;
+        g = modal.querySelector(".green").value;
+        b = modal.querySelector(".blue").value;
+        setColor(`rgba(${r},${g},${b},${opacity.value})`, previusColor, modal);
+        // const opacityVal = opacity.parentElement.querySelector('opacityVal');
+        // console.log(opacityVal.value);
+        // opacityVal.value = opacity.value;
     });
 
     const spectrumRanges = [
@@ -2498,6 +2503,35 @@ function createColorPickModal () {
     modal.innerHTML = colorPickModalContent;
     document.body.appendChild(modal);
 
+    interact('.modal-content-color')
+        .draggable({
+            enabled: true,
+            inertia: true,
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                    endOnly: true
+                })
+            ],
+            autoScroll: true,
+            listeners: {move: [dragMoveListener], end: [endDragListener] }
+        })
+    modalColor = modal.querySelector('.modal-content-color');
+    console.log(modalColor);
+    modalColor.addEventListener('mousedown', (e) => {
+        if(e.target!==modalColor){
+            interact('.modal-content-color').draggable({ enabled: false});
+        }else {
+            interact('.modal-content-color').draggable({ enabled: true});
+        }
+    })
+    modalColor.addEventListener('mousemove', (e) => {
+        if(e.target!==modalColor){
+            interact('.modal-content-color').draggable({ enabled: false});
+        }else {
+            interact('.modal-content-color').draggable({ enabled: true});
+        }
+    })
     return modal;
 }
 function lerpColor(color1, color2, factor) {
@@ -2625,7 +2659,7 @@ function createFontModal() {
     let fontPickModalContent = `
         <div class="modal-content-font">
             <div class="font-list-wrap">
-                <span class="font-label">Font Style:</span>
+                <span class="font-label">Font Family:</span>
                 <div class="font-list">
                     <div class="font-list-item" id="recent-fonts" style="display:none;">
                     </div>
@@ -2725,7 +2759,7 @@ function createFontModal() {
                 <div class="line-height">
                     <label for="lineHeight" style="grid-column: 1; grid-row: 1; align-self: self-end;">Line Height:</label>
                     <span class="lineHeightVal">val</span>
-                    <input type="range" id="lineHeight" min="1" max="3" step="0.1">
+                    <input type="range" id="lineHeight" min="0" max="4" step="0.1">
                 </div>
                 <div class="p-padding">
                     <label for="padding-font" style="grid-row: 1; grid-column: 1/3;">Padding:</label>
@@ -2745,21 +2779,16 @@ function createFontModal() {
                 <span class="preset-header">Presets</span>
                 <button class="save-preset-btn">Save Current as Preset</button>
                 <div class="preset-list">
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <div class="preset-item">NaN
-                    </div>
-                    <!-- Dynamically populate with user's saved presets -->
+                    ${globalPresetList ? globalPresetList.innerHTML : `
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <div class="preset-item">NaN</div>
+                        <!-- Dynamically populate with user's saved presets -->
+                    `}
                 </div>
             </div>
 
@@ -2776,6 +2805,36 @@ function createFontModal() {
     `
     modal.innerHTML = fontPickModalContent;
     document.body.appendChild(modal);
+
+    interact('.modal-content-font')
+        .draggable({
+            enabled: true,
+            inertia: true,
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                    endOnly: true
+                })
+            ],
+            autoScroll: true,
+            listeners: { move: [dragMoveListener], end: [endDragListener] }
+        })
+    
+    modalFont = modal.querySelector('.modal-content-font');
+    modalFont.addEventListener('mousedown', (e) => {
+        if (e.target !== modalFont) {
+            interact('.modal-content-font').draggable({ enabled: false });
+        } else {
+            interact('.modal-content-font').draggable({ enabled: true });
+        }
+    })
+    modalFont.addEventListener('mousemove', (e) => {
+        if (e.target !== modalFont) {
+            interact('.modal-content-font').draggable({ enabled: false });
+        } else {
+            interact('.modal-content-font').draggable({ enabled: true });
+        }
+    })
     return modal;
 }
 function showFontPickModal(event) {
@@ -2783,6 +2842,7 @@ function showFontPickModal(event) {
     var currentPaddingPos = 'All';
     modal = createFontModal();
     var openedElement = 'none';
+    var hiddenPos = '';
     var currentFont = window.getComputedStyle(event.target).getPropertyValue('font-family');
     const previousFont = currentFont;
 
@@ -2797,8 +2857,8 @@ function showFontPickModal(event) {
     const paddingList = paragraphOptions.querySelector('.padding-list');
     const fontSizeRange = modal.querySelector('#fontSize');
     
-    fontSizeRange.value = window.getComputedStyle(event.target).getPropertyValue('font-size');
-    fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
+    // fontSizeRange.value = window.getComputedStyle(event.target).getPropertyValue('font-size');
+    // fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
     
     const previousSize = fontSizeRange.value;
     
@@ -2808,9 +2868,9 @@ function showFontPickModal(event) {
     const noteContainer = event.target.parentElement;
     const note = noteContainer.querySelector('.textbox');
     
-    fontPreview.querySelector('.preview-box').style.background = window.getComputedStyle(note).getPropertyValue('background');
-    fontPreview.querySelector('.preview-box-font').style.color = window.getComputedStyle(note).getPropertyValue('color');
-    console.log(event.target);
+    // fontPreview.querySelector('.preview-box').style.background = window.getComputedStyle(note).getPropertyValue('background');
+    // fontPreview.querySelector('.preview-box-font').style.color = window.getComputedStyle(note).getPropertyValue('color');
+    // console.log(event.target);
     modal.addEventListener('click', (event) => {
         if(event.target.parentElement.className===openedElement) {
             return;
@@ -2828,10 +2888,13 @@ function showFontPickModal(event) {
             openedElement = 'none';
         }
         else if (openedElement === 'padding-list') {
-            paddingList.style.height = '41.8';
+            paddingList.style.height = '41.8px';
             paddingList.scrollTo(0,0)
             paddingList.style.overflowY = 'hidden';
             openedElement = 'none';
+            if(hiddenPos!=='') {
+                hiddenPos.style.display = 'block';
+            }
         }
     });
 
@@ -2905,12 +2968,30 @@ function showFontPickModal(event) {
         fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
         updateFont('size', true, e.target);
     });
-    fontSizeRange.parentElement.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+    // fontSizeRange.value = window.getComputedStyle(note).getPropertyValue('font-size');
+
+    // On intial check if the user have checked
+    // to make the font size relative to container
+    const growFontRelative = fontSizeRange.parentElement.querySelector('input[type="checkbox"]');
+    // if(noteContainer.getAttribute('sizeRelative')) {
+    //     growFontRelative.checked = true;
+    // }
+    //On intial set the font size range to the current font size
+    // fontSizeRange.value= window.getComputedStyle(note).getPropertyValue('font-size');
+    // fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
+    // updateFont('size', true, fontSizeRange);
+
+
+    // check if the user have checked or unchecked
+    // to make the font size relative to container
+    growFontRelative.addEventListener('change', function() {
         if(this.checked) {
-            sizeRelative = true;
-            growFont(note);
+            noteContainer.setAttribute('sizeRelative', true);
+            growFont(noteContainer);
         }else {
-            sizeRelative = false;
+            console.log('\n\n\n Grow false');
+            noteContainer.setAttribute('sizeRelative', false);
+            updateFont('size', true);
         }
     });
 
@@ -2944,18 +3025,16 @@ function showFontPickModal(event) {
             });
         }
     });
-
+    const preview = fontPreview.querySelector('.preview-box-font');
     paragraphOptions.querySelectorAll('button').forEach((button) => {
         button.addEventListener('click', () => {
             const textAlignPos = button.className.slice(6);
-            const preview = fontPreview.querySelector('.preview-box-font');
             event.target.style.textAlign = textAlignPos;
             note.style.textAlign = textAlignPos;
             preview.parentElement.style.justifyContent = textAlignPos;
         });
     });
     paragraphOptions.querySelector('#lineHeight').addEventListener('input', (e) =>{
-        const preview = fontPreview.querySelector('.preview-box-font');
         
         e.target.previousElementSibling.innerHTML = e.target.value;
         note.style.lineHeight = e.target.value;
@@ -2966,12 +3045,20 @@ function showFontPickModal(event) {
         openedElement = 'padding-list';
         if((target.innerHTML === '')) {
             target.style.display='none';
-            paddingList.style.height = '252px';
-            paddingList.style.overflowY = 'auto';
+            // paddingList.style.height = '252px';
+            paddingList.style.height = '211px';
+            // paddingList.style.overflowY = 'auto';
         }else if((target === paddingList.children[0])) {
-            paddingList.style.height = '252px';
+            Array.from(paddingList.children).forEach((pos) => {
+                if((pos.innerHTML === paddingList.children[0].innerHTML) && (pos !== paddingList.children[0])) {
+                    hiddenPos = pos;
+                    pos.style.display = 'none';
+                }
+            })
+            // paddingList.style.height = '252px';
+            paddingList.style.height = '211px';
             // target.style.display='none';
-            paddingList.style.overflowY = 'auto';
+            // paddingList.style.overflowY = 'auto';
         }
         
         else {
@@ -2983,6 +3070,7 @@ function showFontPickModal(event) {
             paddingList.scrollTo(0,0);
             paddingList.style.overflowY = 'hidden';
             openedElement = 'none';
+            hiddenPos.style.display = 'block';
             
             padding = paragraphOptions.querySelector('#padding-font');
             currentPaddingPos = target.innerHTML;
@@ -3026,7 +3114,6 @@ function showFontPickModal(event) {
         }
     });
     paragraphOptions.querySelector('#padding-font').addEventListener('input', (e) => {
-        const preview = fontPreview.querySelector('.preview-box-font');
         if(currentPaddingPos==='All') {
             note.style.padding = e.target.value+'px';
         }
@@ -3062,8 +3149,138 @@ function showFontPickModal(event) {
         }
     });
 
+    function initFont() {
+        const prevFont = 
+        {growFont:false , 
+        fontSize:previousSize,
+        fontFamily:previousFont, 
+        fontStyle:{style: '' , weight: ''},
+        Strikethrough:false, 
+        Superscript:false, 
+        Underlined:false, 
+        Overlined:false, 
+        SmallCaps:false, 
+        AllCaps:false,
+        textAlign:'left',
+        lineHeight:1,
+        padding:{All:0 , Left:0, Right:0, Top:0, Bottom:0},
+    };
+
+        const prevFontStyle = window.getComputedStyle(note);
+
+        
+        
+        prevFont.fontFamily = prevFontStyle.getPropertyValue('font-family');
+
+        prevFont.fontSize = fontSizeRange.value;
+
+        prevFont.fontStyle = {style: window.getComputedStyle(note).getPropertyValue('font-style') , weight: window.getComputedStyle(note).getPropertyValue('font-weight')};
+
+        fontPreview.querySelector('.preview-box').style.background = prevFontStyle.getPropertyValue('background');
+        fontPreview.querySelector('.preview-box-font').style.color = prevFontStyle.getPropertyValue('color');
+        // On intial check if the user have checked
+        // to make the font size relative to container
+        const growFontRelative = fontSizeRange.parentElement.querySelector('input[type="checkbox"]');
+        console.log(noteContainer.getAttribute('sizeRelative'));
+        console.log(noteContainer.getAttribute('sizeRelative')==='true');
+        if(noteContainer.getAttribute('sizeRelative')==='true') {
+            console.log(noteContainer.getAttribute('sizeRelative'));
+            growFontRelative.checked = true;
+            prevFont.growFont = true;
+        }
+        else if(noteContainer.getAttribute('sizeRelative')==='false') {
+            growFontRelative.checked = false;
+            prevFont.growFont = false;
+        }
+        
+
+        // On intial set the font size range to 
+        // the current font size
+        fontSizeRange.value = prevFontStyle.getPropertyValue('font-size');
+        fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
+        prevFont.fontSize = fontSizeRange.value;
+        preview.style.fontSize = prevFont.fontSize+'px';
+
+        const effectCheckboxs = fontEffects.querySelectorAll('input[type=checkbox]');
+        
+        // init check if strikethrough
+        if(prevFontStyle.getPropertyValue('text-decoration-line').includes('line-through')) {
+            effectCheckboxs[0].checked = true;
+            prevFont.Strikethrough = true;
+        }
+
+        // init check if Superscript
+        if((prevFontStyle.getPropertyValue('vertical-align') === 'super') && (prevFontStyle.getPropertyValue('font-size') === '0.8em') ) {
+            effectCheckboxs[1].checked = true;
+            prevFont.Superscript = true;
+        }
+
+        //init check if UnderLined
+        if(prevFontStyle.getPropertyValue('text-decoration-line').includes('underline')) {
+            effectCheckboxs[2].checked = true;
+            prevFont.Underlined = true;
+        }
+
+        //init check if OverLined
+        if(prevFontStyle.getPropertyValue('text-decoration-line').includes('overline')) {
+            effectCheckboxs[3].checked = true;
+            prevFont.Overlined = true;
+        }
+
+        //init check if Small caps
+        if(prevFontStyle.getPropertyValue('font-variant').includes('small-caps')) {
+            effectCheckboxs[4].checked = true;
+            prevFont.SmallCaps = true;
+        }
+
+        //init check if All caps
+        if(prevFontStyle.getPropertyValue('font-variant').includes('uppercase')) {
+            effectCheckboxs[5].checked = true;
+            prevFont.AllCaps = true;
+        }
+
+        //init check text align
+        prevFont.textAlign = prevFontStyle.getPropertyValue('text-align');
+        if(prevFont.textAlign !== 'start') {
+            preview.parentElement.style.justifyContent = prevFont.textAlign;
+            preview.style.textAlign = prevFont.textAlign;
+        }
+
+        //init line Height
+        prevFont.lineHeight = prevFontStyle.getPropertyValue('line-height');
+        lineHeightRange = paragraphOptions.querySelector('#lineHeight');
+        if(prevFont.lineHeight==='normal' || prevFont.lineHeight==='64px') {
+            prevFont.lineHeight = 1;
+        }
+        lineHeightRange.value = prevFont.lineHeight;
+
+        lineHeightRange.previousElementSibling.innerHTML = prevFont.lineHeight;
+        preview.style.lineHeight = prevFont.lineHeight;
+        
+        // init Padding
+        const paddingFont = paragraphOptions.querySelector('#padding-font');
+        paddingFont.value = parseFloat(prevFontStyle.getPropertyValue('padding').replace('px', ''));
+        prevFont.padding.All = paddingFont.value;
+        preview.style.padding = prevFont.padding.All+'px';
+
+        prevFont.padding.Left = parseFloat(prevFontStyle.getPropertyValue('padding-left').replace('px', ''));
+        preview.style.paddingLeft = prevFont.padding.Left+'px';
+        
+        prevFont.padding.Right = parseFloat(prevFontStyle.getPropertyValue('padding-right').replace('px', ''));
+        preview.style.paddingRight = prevFont.padding.Right+'px';
+        
+        prevFont.padding.Top = parseFloat(prevFontStyle.getPropertyValue('padding-top').replace('px', ''));
+        preview.style.paddingTop = prevFont.padding.Top+'px';
+        
+        prevFont.padding.Bottom = parseFloat(prevFontStyle.getPropertyValue('padding-bottom').replace('px', ''));
+        preview.style.paddingBottom = prevFont.padding.Bottom+'px';
+        
+        return prevFont;
+    }
+    const initalFont = initFont();
+
     function updateFont(param ,flag, target) {
-        const preview = fontPreview.querySelector('.preview-box-font');      
+        const preview = fontPreview.querySelector('.preview-box-font');
         if(param==='all') {
             //revert 
             //=======
@@ -3073,11 +3290,94 @@ function showFontPickModal(event) {
             // size
             note.style.fontSize = ` ${previousSize}px`;
             //style
-            event.target.style.fontStyle = `${previousStyle.style}`;
-            note.style.fontStyle = `${previousStyle.style}`;
+            event.target.style.fontStyle = `${initalFont.fontStyle.style}`;
+            note.style.fontStyle = `${initalFont.fontStyle.style}`;
             //weight
-            event.target.style.fontWeight = `${previousStyle.weight}`;
-            note.style.fontWeight = `${previousStyle.weight}`;
+            event.target.style.fontWeight = `${initalFont.fontStyle.weight}`;
+            note.style.fontWeight = `${initalFont.fontStyle.weight}`;
+            //LineHeight
+            note.style.lineHeight = initalFont.lineHeight;
+
+            if(initalFont.Strikethrough) {
+                ef = event.target.style.textDecorationLine.concat(' ', `line-through`);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }else {
+                ef = event.target.style.textDecorationLine.replace(`line-through`, ``);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }
+
+            if(initalFont.Superscript) {
+                note.style.fontSize = `0.8em`;
+
+                note.style.verticalAlign = `super`;
+
+                note.style.lineHeight = `1`;
+            }else {
+                note.style.fontSize = initalFont.fontSize+'px';
+
+                note.style.verticalAlign = `unset`;
+
+                note.style.lineHeight = initalFont.lineHeight;
+            }
+
+            if(initalFont.Underlined) {
+                ef = event.target.style.textDecorationLine.concat(' ', `underline`);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }else {
+                ef = event.target.style.textDecorationLine.replace('underline', ``);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }
+
+            if(initalFont.Overlined) {
+                ef = event.target.style.textDecorationLine.concat(' ', `overline`);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }else {
+                ef = event.target.style.textDecorationLine.replace('overline', ``);
+                event.target.style.textDecorationLine = ef;
+                note.style.textDecorationLine = ef;
+            }
+
+            if(initalFont.SmallCaps) {
+                event.target.style.fontVariant = `small-caps`;
+                note.style.fontVariant = `small-caps`;
+            }else {
+                event.target.style.fontVariant = `unset`;
+                note.style.fontVariant = `unset`;
+            }
+           
+            if(initalFont.AllCaps) {
+                event.target.style.textTransform = `uppercase`;
+                note.style.textTransform = `uppercase`;
+            }else {
+                event.target.style.textTransform = `unset`;
+                note.style.textTransform = `unset`;
+            }
+
+            //text align
+            note.style.textAlign = initalFont.textAlign;
+            
+            //padding
+            note.style.padding = initalFont.padding.All+'px';
+
+            note.style.padding = initalFont.padding.Left+'px';
+
+            note.style.padding = initalFont.padding.Right+'px';
+
+            note.style.padding = initalFont.padding.Top+'px';
+
+            note.style.padding = initalFont.padding.Bottom+'px';
+
+            //grow Font
+            if(initalFont.growFont) {
+                noteContainer.setAttribute('sizeRelative', true);
+            }else {
+                noteContainer.setAttribute('sizeRelative', false);
+            }
         }
         if(flag) {
             if(param==='font') {
@@ -3121,7 +3421,6 @@ function showFontPickModal(event) {
                     note.style.lineHeight = `1`;
                     preview.style.lineHeight = `1`;
                     paragraphOptions.querySelector('#lineHeight').disabled = true;
-                    
                 }
                 if(param.includes('Underlined')) {
                     ef = event.target.style.textDecorationLine.concat(' ', `underline`);
@@ -3189,8 +3488,8 @@ function showFontPickModal(event) {
                     ef = event.target.style.textDecorationLine.replace("underline", "");
                     event.target.style.textDecorationLine = ef;
                     note.style.textDecorationLine = ef;
-                    preview.style.textDecorationLine = ef;
-                    
+                    preview.style.textDecorationLine = ef;               
+
                 }
                 if(param.includes('Overlined')) {
                     ef = event.target.style.textDecorationLine.replace("overline", "");
@@ -3202,11 +3501,13 @@ function showFontPickModal(event) {
                     event.target.style.fontVariant = `normal`;
                     note.style.fontVariant = `normal`;
                     preview.style.fontVariant = `normal`;
+
                 }
                 if(param.includes('All caps')) {
                     event.target.style.textTransform = `unset`;
                     note.style.textTransform = `unset`;
                     preview.style.textTransform = `unset`;
+
                 }
             }
         }
@@ -3217,7 +3518,240 @@ function showFontPickModal(event) {
             closeFontModal(modal);
         }
     }
+    // Preset save
+    const presetSection = modal.querySelector('.preset-section');
+    const presetList = presetSection.querySelector('.preset-list');
+    presetSection.querySelector('button').addEventListener('click', function() {
+        savePreset(initFont());
+    });
+    Array.from(presetList.children).forEach((p) => {
+        p.addEventListener('click', function() {
+            const fontPreset = JSON.parse(p.getAttribute('fontpreset'));
+            console.log(fontPreset.fontFamily);
+            presetLoad(fontPreset);
+        });
+    });
+    function savePreset(currentFontPreset) {
+        presetList.removeChild(presetList.lastElementChild);
+        
+        let newPreset = document.createElement('div');
+        newPreset.className = 'preset-item';
+        newPreset.innerHTML = 'Text';
+        var ef = '';
+        newPreset.style.fontFamily = currentFontPreset.fontFamily;
+        newPreset.style.fontSize = currentFontPreset.fontSize+'px';
+        newPreset.style.fontWeight = currentFontPreset.fontStyle.weight;
+        newPreset.style.fontStyle = currentFontPreset.fontStyle.style;
+        if(currentFontPreset.Strikethrough) {
+            newPreset.style.textDecorationLine = 'line-through';
+        }
+        
+        if(currentFontPreset.Superscript) {
+            newPreset.style.fontSize = '0.8em';
+            newPreset.style.verticalAlign = 'super';
+            newPreset.style.lineHeight = '1';
+        }
 
+        if(currentFontPreset.Underlined) {
+            ef = 'underline';
+            newPreset.style.textDecorationLine = 'underline';
+        }
+
+        console.log('\n\n\n'+currentFontPreset.Overlined);
+        if(currentFontPreset.Overlined) {
+            if(ef==='') {
+                newPreset.style.textDecorationLine = 'overline';
+            }else {
+                newPreset.style.textDecorationLine = 'underline overline';
+            }
+        }
+
+        if(currentFontPreset.SmallCaps) {
+            newPreset.style.fontVariant = 'small-caps';
+        }
+
+        if(currentFontPreset.AllCaps) {
+            newPreset.style.textTransform = 'uppercase';
+        }
+        const fontPresetString = JSON.stringify(currentFontPreset);
+        newPreset.setAttribute('fontpreset', fontPresetString);
+        presetList.insertBefore(newPreset, presetList.firstElementChild);
+        globalPresetList = presetList;
+    }
+    function presetLoad(preset) {
+        if(preset.fontFamily===undefined) {
+            return;
+        }
+        console.log(preset);
+        //font family
+        note.style.fontFamily = preset.fontFamily;
+        event.target.style.fontFamily = preset.fontFamily;
+        preview.style.fontFamily = preset.fontFamily;
+
+        note.style.fontSize = preset.fontFamily;
+        preview.style.fontSize = preset.fontSize+'px';
+
+        //style
+        console.log(preset.fontFamily);
+        event.target.style.fontStyle = `${preset.fontStyle.style}`;
+        note.style.fontStyle = `${preset.fontStyle.style}`;
+        preview.style.fontStyle = `${preset.fontStyle.style}`;
+        //weight
+        event.target.style.fontWeight = `${preset.fontStyle.weight}`;
+        note.style.fontWeight = `${preset.fontStyle.weight}`;
+        preview.style.fontWeight = `${preset.fontStyle.weight}`;
+
+        // On intial check if the user have checked
+        // to make the font size relative to container
+        const growFontRelative = fontSizeRange.parentElement.querySelector('input[type="checkbox"]');
+        if(preset.growFont) {
+            noteContainer.setAttribute('sizeRelative', true);
+            growFontRelative.checked = true;
+            growFont(noteContainer);
+        }else {
+            noteContainer.setAttribute('sizeRelative', false);
+            growFontRelative.checked = false;
+            updateFont('size', true);
+        }
+
+        // On intial set the font size range to 
+        // the current font size
+        fontSizeRange.value = preset.fontSize;
+        fontSizeRange.previousElementSibling.innerHTML = preset.fontSize + 'px';
+        note.style.fontSize = preset.fontSize+'px';
+        preview.style.fontSize = preset.fontSize+'px';
+
+        const effectCheckboxs = fontEffects.querySelectorAll('input[type=checkbox]');
+        
+        // init check if strikethrough
+        if(preset.Strikethrough) {
+            effectCheckboxs[0].checked = true;
+            ef = event.target.style.textDecorationLine.concat(' ', `line-through`);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+        }else {
+            effectCheckboxs[0].checked = false;
+            ef = event.target.style.textDecorationLine.replace(`line-through`, ``);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+
+        }
+
+        // init check if Superscript
+        if(preset.Superscript) {
+            effectCheckboxs[1].checked = true;
+            note.style.fontSize = `0.8em`;
+            preview.style.fontSize = `0.8em`;
+
+            note.style.verticalAlign = `super`;
+            preview.style.verticalAlign = `super`;
+
+            note.style.lineHeight = `1`;
+            preview.style.lineHeight = `1`;
+        }else {
+            effectCheckboxs[1].checked = false;
+            note.style.fontSize = preset.fontSize+'px';
+            preview.style.fontSize = preset.fontSize+'px';
+
+            note.style.verticalAlign = `unset`;
+            preview.style.verticalAlign = `unset`;
+
+            note.style.lineHeight = preset.lineHeight;
+            preview.style.lineHeight = preset.lineHeight;
+        }
+
+        //init check if UnderLined
+        if(preset.UnderLined) {
+            effectCheckboxs[2].checked = true;
+            ef = event.target.style.textDecorationLine.concat(' ', `underline`);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+            preview.style.textDecorationLine = ef;
+        }else {
+            effectCheckboxs[2].checked = false;
+            ef = event.target.style.textDecorationLine.replace('underline', ``);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+            preview.style.textDecorationLine = ef;
+        }
+
+        //init check if OverLined
+        if(preset.OverLined) {
+            effectCheckboxs[3].checked = true;
+            ef = event.target.style.textDecorationLine.concat(' ', `overline`);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+            preview.style.textDecorationLine = ef;
+        }else {
+            effectCheckboxs[3].checked = false;
+            ef = event.target.style.textDecorationLine.replace('overline', ``);
+            event.target.style.textDecorationLine = ef;
+            note.style.textDecorationLine = ef;
+            preview.style.textDecorationLine = ef;
+        }
+
+        //init check if Small caps
+        if(preset.SmallCaps) {
+            effectCheckboxs[4].checked = true;
+            event.target.style.fontVariant = `small-caps`;
+            note.style.fontVariant = `small-caps`;
+            preview.style.fontVariant = `small-caps`;
+        }else {
+            effectCheckboxs[4].checked = false;
+            event.target.style.fontVariant = `unset`;
+            note.style.fontVariant = `unset`;
+            preview.style.fontVariant = `unset`;
+        }
+
+        //init check if All caps
+        if(preset.AllCaps) {
+            effectCheckboxs[5].checked = true;
+            event.target.style.textTransform = `uppercase`;
+            note.style.textTransform = `uppercase`;
+            preview.style.textTransform = `uppercase`;
+        }else {
+            effectCheckboxs[5].checked = false;
+            event.target.style.textTransform = `unset`;
+            note.style.textTransform = `unset`;
+            preview.style.textTransform = `unset`;
+        }
+
+        //init check text align
+        if(preset.textAlign !== 'start') {
+            preview.parentElement.style.justifyContent = preset.textAlign;
+            preview.style.textAlign = preset.textAlign;
+            note.style.textAlign = preset.textAlign;
+        }
+
+        //init line Height
+        
+        if(!preset.Superscript) {
+            lineHeightRange = paragraphOptions.querySelector('#lineHeight');
+            if(preset.lineHeight==='normal' || preset.lineHeight==='64px') {
+                preset.lineHeight = 1;
+    
+            }
+            lineHeightRange.previousElementSibling.innerHTML = preset.lineHeight;
+            preview.style.lineHeight = preset.lineHeight;
+            note.style.lineHeight = preset.lineHeight;
+        }
+
+        //padding
+        note.style.padding = preset.padding.All + 'px';
+        preview.style.padding = preset.padding.All + 'px';
+
+        note.style.padding = preset.padding.Left + 'px';
+        preview.style.padding = preset.padding.Left + 'px';
+
+        note.style.padding = preset.padding.Right + 'px';
+        preview.style.padding = preset.padding.Right + 'px';
+
+        note.style.padding = preset.padding.Top + 'px';
+        preview.style.padding = preset.padding.Top + 'px';
+
+        note.style.padding = preset.padding.Bottom + 'px';
+        preview.style.padding = preset.padding.Bottom + 'px';
+    }
 
 }
 function closeFontModal(modal) {
