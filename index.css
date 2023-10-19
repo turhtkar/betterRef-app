@@ -1538,3 +1538,29 @@
     background-color: rgba(0, 0, 255, 0.1);
     pointer-events: none; /* Makes sure the box doesn't interfere with other pointer events */
   }
+  #unsaved-modal-container{
+    height: 100%;
+    width: 100%;
+    z-index: 2;
+    position: absolute;
+  }
+  #unsaved-modal {
+    user-select: none;
+    top: 50%;
+    position: absolute;
+    left: 50%;
+    height: 296px;
+    width: 500px;
+    background: #282828;
+    font-size: 34px;
+    font-family: roboto;
+    padding: 41px;
+    display: grid;
+    color: #5e5751;
+    grid-template-rows: 1% 78% 20%;
+    grid-template-columns: 10% 25% 25% 25% 10%;
+  }
+.unsaved-modal-button{
+  font-size: 32px;
+  height: 78px;
+}

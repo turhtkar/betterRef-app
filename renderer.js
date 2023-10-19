@@ -1,15 +1,10 @@
 const interact = require('interactjs');
 const { ipcRenderer } = require('electron');
-const { webFrame } = require('electron');
-
 
 let zoomFactor = 1.24; // Keep track of the zoom level
 var lastTransform = {x: 0 , y:0};
 var focusedElement = -1; // Keep track of the focused element
-let translation = {x: 0, y: 0};
 let scale = 1;
-var lastZoomPoint = {x: 0, y: 0};
-var centerPoint = {x:0, y:0}
 var selectedElement = 0;
 var lastReminderWidth = 0;
 var lastReminderHeight = 0;
@@ -19,26 +14,26 @@ var centerY = 0;
 let zIndex = 0;
 let load = 0;
 let lastPos = {left: 0, top: 0, right: 0, bottom: 0}
-let pos = {left: 0, top: 0, right: 0, bottom: 0};
+// let pos = {left: 0, top: 0, right: 0, bottom: 0};
 var isResize = 0;
 var isDragging = false;
 var currVid = 0;
 var videoData = {startTime: 0, endTime: 0};
-let isModalOpen = false;
-let runVid = false;
+// let isModalOpen = false;
+// let runVid = false;
 var colorModalOpen = false;
-var isInteracting;
 var globalPresetList = null;
+var presetData = [];
 var multipleSelection = false;
 var isOutofBound = false;
 var selectedElements = null;
 var elementsGrid = null;
 var wrapper = null;
 var gridSnap = null;
-var previousElementGridPos={left:0, top:0};
 var interactableElements=[];
 var isSnappingEnabled = false;
 var undoList = [];
+var noteId = 0;
 
 // function greedyMasonryLayout(elements) {
     
@@ -126,6 +121,7 @@ document.addEventListener('click', function() {
     }
 });
 
+
 function getOrCreateGrid() {
     let refGrid = document.getElementById('grid-snap');
     let wrapperGrid = document.querySelector('.wrapper-grid');
@@ -153,57 +149,7 @@ function getOrCreateGrid() {
         elementsGrid = elementGrid;
         wrapper = wrapperGrid;
         gridSnap = refGrid;
-        
 
-        //make the element grid an interact js object
-        // interact('.elementGrid')
-        // .draggable({
-        //     onstart: [function(event) {
-        //         // Disable individual dragging of children
-        //         let children = Array.from(event.target.children);
-        //         children.forEach(child => {
-        //             child.setAttribute('data-no-drag', 'true');  // Just a custom attribute to track
-        //         });
-        //     }, ],
-        //     onmousemove: dragMoveListener,
-        //     onend: [function(event) {
-        //         // Re-enable individual dragging of children and update their translate values
-        //         let children = Array.from(event.target.children);
-        //         children.forEach(child => {
-        //             child.removeAttribute('data-no-drag');
-        //             // Assuming you use a utility function like this to update their translate values:
-        //             // savePositions();
-        //         });
-        //     }, endDragListener],
-        //     // ... other drag handlers
-        // });
-        // document.addEventListener('click', (e) => {
-        //     // if(multipleSelection=true) {
-        //     //     return;
-        //     // }
-        //     var target = e.target;
-        //     console.log(e.target);
-        //     while (target) {
-        //         if (Array.from(elementGrid.children).includes(target)) {
-        //             return;
-        //         }
-        //         target = target.parentElement;
-        //     }
-        //     multipleSelection = false;
-        //     Array.from(elementGrid.children).forEach(child => {
-        //         if(child.className.includes('handle')) {
-        //             let boundingBox = child.querySelector('#boundingBox');
-        //             if(boundingBox) {
-        //                 Array.from(boundingBox.children).forEach(handle => {
-        //                     handle.style.display = 'block';
-        //                 });
-        //                 boundingBox.style.display = "none";
-        //                 refGrid.appendChild(child);
-        //             }
-        //         }
-        //     });
-        //     elementGrid.style.display = 'none';
-        // });
     }
 
     return { refGrid, wrapperGrid };
@@ -222,432 +168,19 @@ window.onload = function() {
         event.preventDefault();
         return false;
     };
-    // var brHandle = document.querySelector('.handle-br');
-    // var curLef = brHandle.getBoundingClientRect();
-    // console.log(curLef.left);
-    // console.log((curLef.left-16) + 'px');
-    // brHandle.style.left = (curLef.left-16) + 'px';
 
     dropZone.ondrop = (event) => {
         event.preventDefault();
-        console.log('nig');
         
         const { refGrid, wrapperGrid } = getOrCreateGrid();
-        //Zoom on mouse wheel event
-        let accx = 0, accy = 0;
 
-        function handleZoom(e) {
-            if(e.target !== refGrid) {
-                return;
-            }
-            if(selectedElement) {
-                console.log(selectedElement.offsetX);
-                console.log(e.offsetX);
-            }
-            if(load===0) {
-                console.log('save pos');
-                var positions = savePositions();
-                var draggableItems = document.querySelectorAll('.draggable');
-                for(let i = 0; i<draggableItems.length; i++ ) {
-                    draggableItems[i].style.position = "absolute";
-                    draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
-                }
-                load++;
-            }
-            e.preventDefault();
-
-            //add the last styles added to the undo list
-            // storeStyleBeforeChange(e.target, 'scale3D', scale);
-            // storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
-            // undoList.push(refGrid.style.transform = `scale3D(${scale}, ${scale}, ${scale})`);
-
-
-            if (e.deltaY < 0) {
-                scale *= 1.24;
-                accx = lastTransform.x + e.offsetX * scale/1.24 - e.offsetX * scale;
-                accy = lastTransform.y + e.offsetY * scale/1.24 - e.offsetY * scale;
-            } else {
-                scale /= 1.24;
-                accx = lastTransform.x + e.offsetX * scale * 1.24 - e.offsetX * scale;
-                accy = lastTransform.y + e.offsetY * scale * 1.24 - e.offsetY * scale;
-            }
-
-            refGrid.style.transformOrigin = "0 0";
-            e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
-            wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
-            //for easy access into the wrapperGrid.style.Transform translate Points
-            lastTransform.x = accx;
-            lastTransform.y = accy;
-            lastZoomPoint.x = accx;
-            lastZoomPoint.y = accy;
-            if(selectedElement != 0) {
-                // updateBoundingBox(selectedElement);
-            }
-            // translation.x = accx;
-            // translation.y = accy;
-            
-            // boundBox = document.querySelector('#boundingBox');
-            // if(boundBox.style.display != 'none') {
-            //     boundBox.style.transform = 'translate( ' + (translation.x + refGrid.getBoundingClientRect().x)/scale + 'px, ' + (translation.y + refGrid.getBoundingClientRect().y)/scale + 'px)'
-            //     boundBox.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
-            // }
-        }
-        refGrid.addEventListener("wheel",handleZoom);
-
-        let selectionBox = null;
-        let initialX, initialY, finalX, finalY;
-        let isHolding = false;
-
-        interact(refGrid)
-            .on('down', function(e) {
-                if(e.button !== 0) {
-                    return;
-                }
-                // const e = event.pointer;
-                console.log(e.target);
-                if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player"))) {
-                    if(multipleSelection) {
-                        deSelectMultiElem();
-                    }
-                    console.log(e.target);
-                    initialX = e.clientX;
-                    initialY = e.clientY;
-
-                    selectionBox = document.createElement("div");
-                    selectionBox.className = "selectionBox";
-                    document.body.appendChild(selectionBox);
-
-                    isHolding = true;
-                }
-            })
-            .on('move', function(event) {
-                if (isHolding) {
-                    finalX = event.clientX;
-                    finalY = event.clientY;
-
-                    let boxX = Math.min(initialX, finalX);
-                    let boxY = Math.min(initialY, finalY);
-                    let boxWidth = Math.abs(initialX - finalX);
-                    let boxHeight = Math.abs(initialY - finalY);
-
-                    Object.assign(selectionBox.style, {
-                        left: boxX + "px",
-                        top: boxY + "px",
-                        width: boxWidth + "px",
-                        height: boxHeight + "px"
-                    });
-                    if (selectionBox) {
-                        if (!(finalX != null && finalY != null)) {
-                            return;
-                        }
-                        const elementGrid = refGrid.querySelector('.elementGrid');
-                        var left = initialX;
-                        var right = finalX;
-                        var top = initialY;
-                        var bottom = finalY;
-                        var selectElementGrid = { left: 0, top: 0, right: 0, bottom: 0 };
-                        if (initialX > finalX) {
-                            left = finalX;
-                            right = initialX;
-                        }
-                        if (initialY > finalY) {
-                            top = finalY;
-                            bottom = initialY;
-                        }
-                        let draggableItems = document.querySelectorAll(".draggable");
-                        draggableItems.forEach(el => {
-                            let rect = el.getBoundingClientRect();
-                            if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
-                                && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
-                                //the element collided with the selection box so we add it to the element grid
-                                // el.classList.add('selected');
-                                el.classList.add('selected');
-                                //then we showing the bounding box itself of the selected element
-                                // without her handles since we get the handles
-                                // from the element grid
-                                let boundingBox = el.querySelector('#boundingBox');
-                                if (boundingBox) {
-                                    Array.from(boundingBox.children).forEach(child => {
-                                        child.style.display = 'none';
-                                    });
-                                    boundingBox.style.display = "block";
-                                }
-                                // intialize selected element grid
-                                if (selectElementGrid.left === 0) {
-                                    selectElementGrid.left = rect.left;
-                                    selectElementGrid.top = rect.top;
-                                    selectElementGrid.right = rect.right;
-                                    selectElementGrid.bottom = rect.bottom;
-                                } else {
-                                    if (selectElementGrid.left > rect.left) {
-                                        selectElementGrid.left = rect.left;
-                                    }
-                                    if (selectElementGrid.top > rect.top) {
-                                        selectElementGrid.top = rect.top;
-                                    }
-                                    if (selectElementGrid.right < rect.right) {
-                                        selectElementGrid.right = rect.right;
-                                    }
-                                    if (selectElementGrid.bottom < rect.bottom) {
-                                        selectElementGrid.bottom = rect.bottom;
-                                    }
-                                }
-                                // elementsGrid.appendChild(el);
-                                drawElementGrid(selectElementGrid);
-                            }
-                            // let previousSelected = document.querySelectorAll('.selected');
-                            // if (previousSelected) {
-                            //     let previousSelectedList = Array.from(previousSelected);
-                            //     if(previousSelectedList.length===2) {
-                            //         previousSelectedList.forEach(selected => {
-                            //             if(!selected.classList.contains('elementGrid')) {
-                            //                 let rect = selected.getBoundingClientRect();
-                            //                 if (rect.left != selectionBox.left) {
-                            //                     selected.classList.remove('selected');
-                            //                     let boundingBox = selected.querySelector('#boundingBox');
-                            //                     if (!(((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
-                            //                     && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom)))) {
-                            //                         Array.from(boundingBox.children).forEach(handle => {
-                            //                             handle.style.display = 'block';
-                            //                         });
-                            //                         boundingBox.style.display = 'none';
-                            //                     }
-                            //                 }
-                            //             }
-                            //         });
-                            //     }
-                            //     // if(Array.from(document.querySelectorAll('.selected')).length===1) {
-                            //     //     eGrid = document.querySelector('.elementGrid');
-                            //     //     eGrid.style.display='none';
-                            //     //     eGrid.classList.remove('selected');
-                            //     // }
-                            // }
-                        });
-                        // let draggableNotes = document.querySelectorAll(".textboxContainer");
-                        // draggableNotes.forEach(el => {
-                        //     let rect = el.getBoundingClientRect();
-                        //     if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
-                        //         && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
-                        //         //the element collided with the selection box so we add it to the element grid
-                        //         el.classList.add('selected');
-                        //         //then we showing the bounding box itself of the selected element
-                        //         // without her handles since we get the handles
-                        //         // from the element grid
-                        //         let boundingBox = el.querySelector('#boundingBox');
-                        //         if (boundingBox) {
-                        //             Array.from(boundingBox.children).forEach(child => {
-                        //                 child.style.display = 'none';
-                        //             });
-                        //             boundingBox.style.display = "block";
-                        //         }
-                        //         // intialize selected element grid
-                        //         if (selectElementGrid.left === 0) {
-                        //             selectElementGrid.left = rect.left;
-                        //             selectElementGrid.top = rect.top;
-                        //             selectElementGrid.right = rect.right;
-                        //             selectElementGrid.bottom = rect.bottom;
-                        //         } else {
-                        //             if (selectElementGrid.left > rect.left) {
-                        //                 selectElementGrid.left = rect.left;
-                        //             }
-                        //             if (selectElementGrid.top > rect.top) {
-                        //                 selectElementGrid.top = rect.top;
-                        //             }
-                        //             if (selectElementGrid.right < rect.right) {
-                        //                 selectElementGrid.right = rect.right;
-                        //             }
-                        //             if (selectElementGrid.bottom < rect.bottom) {
-                        //                 selectElementGrid.bottom = rect.bottom;
-                        //             }
-                        //         }
-                        //         // elementsGrid.appendChild(el);
-                        //         drawElementGrid(selectElementGrid)
-                        //     }else {
-                        //         if(el.classList.contains('selected')) {
-                        //             el.classList.remove('selected');
-                        //             let boundingBox = el.querySelector('#boundingBox');
-                        //             if(boundingBox) {
-                        //                 Array.from(boundingBox.children).forEach(handle => {
-                        //                     handle.style.display = 'block';
-                        //                 });
-                        //                 boundingBox.style.display = 'none';
-                        //             }
-                        //         }
-                        //     }
-                        // });
-                        //check if any element that was selected no longer selected
-                        let previousSelected = document.querySelectorAll('.selected');
-                        if (previousSelected) {
-                            let previousSelectedArray = Array.from(previousSelected);
-                            if(previousSelectedArray.length===1) {
-                                elementsGrid.style.display = 'none';
-                            }
-                            previousSelectedArray.forEach(selected => {
-                                if(selected !== elementsGrid) {
-                                    let rect = selected.getBoundingClientRect();
-                                    if (!(((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
-                                    && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom)))) {
-                                        let boundingBox = selected.firstElementChild;
-                                        if (boundingBox) {
-                                            boundingBox.style.display = 'none';
-                                            Array.from(boundingBox.children).forEach(handle => {
-                                                handle.style.display = 'block';
-                                            });
-                                        }
-                                        selected.classList.remove('selected');
-                                    }
-                                }
-                            });
-                        }
-                    }
-                }
-            })
-            .on('up', function(event) {
-
-                if (isHolding) {
-                    // Your previous logic on mouseup
-                    // ...
-                    selectionBox.remove();
-                    selectionBox = null;
-                    
-                    initialX = initialY = finalX = finalY = null;
-                    
-                    isHolding = false;
-                    if(!elementsGrid.classList.contains('selected')) {
-                        return;
-                    }
-                    var selectedElements = refGrid.querySelectorAll('.selected');
-                    var distanceToSubX = (parseFloat(elementsGrid.getAttribute('data-x')) || 0);
-                    var distanceToSubY = (parseFloat(elementsGrid.getAttribute('data-y')) || 0);
-                    Array.from(selectedElements).forEach(selected => {
-                        if(selected !== elementsGrid) {
-                            elementsGrid.appendChild(selected);
-                            var x = (parseFloat(selected.getAttribute('data-x')) || 0) - distanceToSubX;
-                            var y = (parseFloat(selected.getAttribute('data-y')) || 0) - distanceToSubY;
-                            selected.style.transform = `translate(${x}px, ${y}px)`;
-                        }
-                    });
-                }
-            });
-
-        // Prevent default behavior for dragging and selecting on refGrid
-        interact(refGrid).preventDefault('auto');
-
-        function drawElementGrid(selectElementGrid) {
-            multipleSelection = true;
-            refGridRect = refGrid.getBoundingClientRect();
-            var elementGrid = document.querySelector('.elementGrid');
-            elementGrid.style.display = 'block';
-            elementGrid.classList.add('selected');
-            // if(elementGrid.style.display==='none') {
-            // }
-            let elX = (selectElementGrid.left-parseFloat(refGridRect.left).toFixed(2))/scale;
-            let elY = (selectElementGrid.top-parseFloat(refGridRect.top).toFixed(2))/scale;
-            elementsGrid.setAttribute('prev-data-x', elX);
-            elementsGrid.setAttribute('prev-data-y', elY);
-            elementGrid.setAttribute('data-x', elX);
-            elementGrid.setAttribute('data-y', elY);
-            elementGrid.style.transform = `translate(${elX}px, ${elY}px)`;
-            elementGrid.style.width = ((selectElementGrid.right-selectElementGrid.left)/scale)+'px';
-            elementGrid.style.height = ((selectElementGrid.bottom-selectElementGrid.top)/scale)+'px';
-            
-            // let previousSelected = document.querySelectorAll('.selected');
-            // if (previousSelected) {
-            //     Array.from(previousSelected).forEach(selected => {
-            //         let rect = selected.getBoundingClientRect();
-            //         if (!(((rect.left <= selectElementGrid.left && rect.right>=selectElementGrid.left) || (rect.left >= selectElementGrid.left && rect.left<=selectElementGrid.right))
-            //           && ((rect.top <= selectElementGrid.top && rect.bottom>=selectElementGrid.top) || (rect.top >= selectElementGrid.top && rect.top<=selectElementGrid.bottom)))) {
-            //             selected.classList.remove('selected');
-            //             let boundingBox = selected.querySelector('#boundingBox');
-            //             if(boundingBox) {
-            //                 Array.from(boundingBox.children).forEach(handle => {
-            //                     handle.style.display = 'block';
-            //                 });
-            //                 boundingBox.style.display = 'none';
-            //             }
-            //         }
-            //     });
-            //     // console.log('\n\n\n\nProblem');
-            // }
-        }
-
-        let isPanning = false;
-        let startPan = { x: 0, y: 0 };
-        let accPan = { x: 0, y: 0 };
-
-        wrapperGrid.addEventListener("mousedown", (e) => {
-            if (e.button === 1) {  // Check if the middle (wheel) button is pressed
-                isPanning = true;
-                startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
-                // storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
-            }
-            if(load===0) {
-                console.log('save pos');
-                var positions = savePositions();
-                var draggableItems = document.querySelectorAll('.draggable');
-                for(let i = 0; i<draggableItems.length; i++ ) {
-                    draggableItems[i].style.position = "absolute";
-                    draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
-                }
-                load++;
-            }
-        });
-
-        wrapperGrid.addEventListener("mousemove", (e) => {
-            if (isPanning) {
-                // Calculate the distance moved since the last mousemove event
-                let dx = e.clientX/scale - startPan.x;
-                let dy = e.clientY/scale - startPan.y;
-                // get the wrapper translate
-                const style = window.getComputedStyle(wrapperGrid)
-                const matrixValues = style.transform.match(/matrix.*\((.+)\)/)[1].split(', ');
-                const x = parseFloat(matrixValues[4]);
-                const y = parseFloat(matrixValues[5]);
-
-                // Accumulate the total distance moved for panning
-                accPan.x = (dx*scale)+x;
-                accPan.y = (dy*scale)+y;
-
-                // Apply the pan transformation
-                console.log('accPan.x - ' + startPan.x);
-                wrapperGrid.style.transform = `translate(${accPan.x}px, ${accPan.y}px)`;
-                lastTransform.x = accPan.x;
-                lastTransform.y = accPan.y;                
-
-                // update the bounding box
-                if(selectedElement!=0) {
-                    console.log('selected element is ' + selectedElement);
-                    // updateBoundingBox(selectedElement);
-                }
-                // Reset the start position for the next mousemove event
-                startPan = { x: (e.clientX/scale), y: (e.clientY/scale) };
-            }
-        });
-
-        document.addEventListener("mouseup", (e) => {
-            if (e.button === 1) {  // Check if the middle (wheel) button is released
-                isPanning = false;
-            }
-        });
-
-        refGrid.addEventListener('dblclick', event => {
-            if (document.selection && document.selection.empty) {
-                document.selection.empty();
-              } else if (window.getSelection) {
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-              }
-        });
-
-
-        
         for (let f of event.dataTransfer.files) {
             
         // Create container for each element
         let container = document.createElement('div');
         container.className = 'draggable container';
         container.style.position = 'relative';
-        container.style.overflow = 'visable';
+        container.style.overflow = 'visible';
         // boundingBox.appendChild(container);
             
         // Create bounding box
@@ -689,6 +222,7 @@ window.onload = function() {
                     video.autoplay = true;
                     video.loop = true;
                     video.muted = true;
+                    video.setAttribute('muted', '');
                     // video.className = 'draggable';
                     video.style.top = ' 0 px';
                     video.style.objectFit = 'fill';
@@ -730,18 +264,10 @@ window.onload = function() {
                     
                     let progressBar = document.createElement('div');
                     progressBar.className = 'progress';
-                    // progressBar.setAttribute('value', '0');
-                    // progressBar.setAttribute('max', '100');
-                    
+
                     //TimeLineScrubbingEvents
                     progressBar.addEventListener("mousemove", handleTimelineUpdate);
                     progressBar.addEventListener("mousedown", toggleScrubbing);
-                    document.addEventListener("mouseup", e => {
-                        if (isScrubbing) toggleScrubbing(e);
-                    })
-                    document.addEventListener("mousemove", e => {
-                        if (isScrubbing) handleTimelineUpdate(e);
-                    })
                     
                     controls.appendChild(progressBar);  // Append progress bar to controls
                     
@@ -766,140 +292,14 @@ window.onload = function() {
             // Append the container to the grid-snap
             refGrid.appendChild(container);
 
-
-
-            // make the new image draggable and resizable
-            var interactElements = [];
-            interact('.draggable')
-                .draggable({
-                    ignoreFrom: '.vidPause',
-                    inertia: true,
-                    modifiers: [
-                        interact.modifiers.restrictRect({
-                            elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
-                            endOnly: true
-                        }),
-                        interact.modifiers.snap({
-                            targets: interactElements,
-                            relativePoints: [{ x: 0.5, y: 0.5 }]
-                        })
-                    ],
-                    autoScroll: true,
-                    listeners: { start: [function(event) {
-                        // if I just enabled snapping
-                        if(isSnappingEnabled) {
-                            console.log(interactElements)
-                            interactElements.length = 0; // Clear existing targets  
-                            const targetRect = event.target.getBoundingClientRect();
-                            const gridSnap = document.querySelector('#grid-snap');
-                            const gridSnapRect = gridSnap.getBoundingClientRect();
-                            interactableElements.forEach(element => {
-                                if(element !== event.target){
-                                    const rect = element.getBoundingClientRect();
-
-                                    const left = (rect.left - ((targetRect.width)/2));
-                                    const right = (rect.right + ((targetRect.width)/2));
-                                    const top = (rect.top+(targetRect.height/2));
-                                    const bottom = (rect.bottom-(targetRect.height/2));
-                                    
-                                    //Top Left
-                                    interactElements.push({ x: left, y: top, element, range: 100 });
-                                    //center Left
-                                    interactElements.push({ x: left, y: (rect.top+((rect.height)/2)), element, range: 100 });
-                                    //Bottom Left
-                                    interactElements.push({ x: left, y: bottom, element, range: 100 });
-
-                                    //Top Right
-                                    interactElements.push({ x: right, y: top ,element, range: 100 });
-                                    //center Right
-                                    interactElements.push({ x: right, y: (rect.top+((rect.height)/2)) ,element, range: 100 });
-                                    //Bottom Right
-                                    interactElements.push({ x: right, y: bottom ,element, range: 100 });
-
-                                    //Left Top
-                                    interactElements.push({ x: rect.left + (targetRect.width/2),y: (rect.top-(targetRect.height)/2), element, range: 70 });
-                                    //center Top
-                                    interactElements.push({ x: (rect.left+((rect.width)/2)) ,y: (rect.top-(targetRect.height)/2), element, range: 70 });
-                                    //Right Top
-                                    interactElements.push({ x: (rect.right) - (targetRect.width/2) ,y: (rect.top-(targetRect.height)/2), element, range: 70 });
-                                    
-                                    //Left Bottom
-                                    interactElements.push({ x: rect.left + (targetRect.width/2) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
-                                    //center Bottom
-                                    interactElements.push({ x: (rect.left+((rect.width)/2)) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
-                                    //Right Bottom
-                                    interactElements.push({ x: (rect.right) - (targetRect.width/2) ,y: (rect.bottom)+((targetRect.height)/2), element, range: 70 });
-
-                                }
-
-                            });
-                            console.log(interactElements);
-                            console.log(gridSnapRect.x);
-                        }else {
-                            interactElements.length = 0;
-                        }
-                    } ,selectListener], move: [dragMoveListener], end: [endDragListener, updateSnap] }
-                })
-                .resizable({
-                    edges: { left: true, right: true, bottom: true, top: true },
-                    // preserveAspectRatio: false,
-                    // margin: 10,
-                    inertia: true,
-                    modifiers: [
-                        interact.modifiers.restrictRect({
-                            // restriction: 'parent',
-                            elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
-                            endOnly: true
-                        }),
-                        interact.modifiers.restrictSize({
-                            min: { width: 50, height: 50 },
-                        }),
-                    ],
-                    listeners: { start: (event) => {
-                        target = event.target;
-                        undoList.push({
-                            element: target,
-                            property: 'resize',
-                            height: target.getBoundingClientRect().height,
-                            width: target.getBoundingClientRect().width,
-                            x: parseFloat(target.getAttribute('data-x')),
-                            y: parseFloat(target.getAttribute('data-y'))
-                        });
-                    } , move: resizeMoveListener, end: endResizeListener },
-                    ignoreFrom: '.vidPause',
-                });
         
                 container.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    hideAllCloseButtons();
-                    let closeButton = this.querySelector('.close-button');
-                    selectedElement = 0;
-                    if (closeButton) {
-                        closeButton.style.display = 'block';
-                        selectedElement = event;
-                        let boundBoxs = document.querySelectorAll("#boundingBox");
-                        boundBoxs.forEach(function(boundBox) {
-                            boundBox.style.display='none';
-                        });
-                        let boundingBox = this.querySelector('#boundingBox');
-                        if(boundingBox) {
-                            boundingBox.style.display = "block";
-                        }
-                        // updateBoundingBox(event);
-                        console.log('this is where u looking for - ');
-                        console.log(event.target.getBoundingClientRect().x);
-                        console.log(event.offsetX);
-                    }
+                    selectElement(event);
                 });
                 //gather all the draggable elements in one array
                 // to avoid multiple calls
                 interactableElements.push(container);
             }
-
-        function toggleSnapping() {
-            isSnappingEnabled = !isSnappingEnabled;
-        }
-        ipcRenderer.on('toggle-snap-elements', toggleSnapping);
 
         // Hide the drop zone
         dropZone.style.opacity = '0';
@@ -909,6 +309,444 @@ window.onload = function() {
         return false;
     };
 }
+function selectElement(event) {
+    event.stopPropagation();
+    hideAllCloseButtons();
+    container = event.currentTarget;
+    let closeButton = container.querySelector('.close-button');
+    selectedElement = 0;
+    if (closeButton) {
+        closeButton.style.display = 'block';
+        selectedElement = event;
+        let boundBoxs = document.querySelectorAll("#boundingBox");
+        boundBoxs.forEach(function(boundBox) {
+            boundBox.style.display='none';
+        });
+        let boundingBox = container.querySelector('#boundingBox');
+        if(boundingBox) {
+            boundingBox.style.display = "block";
+        }
+        // updateBoundingBox(event);
+        console.log('this is where u looking for - ');
+        console.log(event.target.getBoundingClientRect().x);
+        console.log(event.offsetX);
+    }
+}
+document.addEventListener("DOMContentLoaded", function() {
+    customLoad();
+});
+function customLoad() {
+    const { refGrid, wrapperGrid } = getOrCreateGrid();
+    interactableElements.length = 0;
+    Array.from(document.querySelectorAll('.draggable')).forEach((container) => {
+        interactableElements.push(container);
+    })
+    //Zoom on mouse wheel event
+    let accx = lastTransform.x, accy = lastTransform.y;
+    
+    function handleZoom(e) {
+        if (e.target !== refGrid) {
+            return;
+        }
+        if (selectedElement) {
+            console.log(selectedElement.offsetX);
+            console.log(e.offsetX);
+        }
+        if (load === 0) {
+            console.log('save pos');
+            var positions = savePositions();
+            var draggableItems = document.querySelectorAll('.draggable');
+            for (let i = 0; i < draggableItems.length; i++) {
+                draggableItems[i].style.position = "absolute";
+                draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
+            }
+            load++;
+        }
+        e.preventDefault();
+    
+        if (e.deltaY < 0) {
+            scale *= 1.24;
+            accx = lastTransform.x + e.offsetX * scale / 1.24 - e.offsetX * scale;
+            accy = lastTransform.y + e.offsetY * scale / 1.24 - e.offsetY * scale;
+        } else {
+            scale /= 1.24;
+            accx = lastTransform.x + e.offsetX * scale * 1.24 - e.offsetX * scale;
+            accy = lastTransform.y + e.offsetY * scale * 1.24 - e.offsetY * scale;
+        }
+    
+        refGrid.style.transformOrigin = "0 0";
+        e.target.style.transform = `scale3D(${scale}, ${scale}, ${scale})`
+        wrapperGrid.style.transform = `translate(${accx}px, ${accy}px)`;
+        //for easy access into the wrapperGrid.style.Transform translate Points
+        lastTransform.x = accx;
+        lastTransform.y = accy;
+        if (selectedElement != 0) {
+            // updateBoundingBox(selectedElement);
+        }
+    }
+    
+    refGrid.addEventListener("wheel", handleZoom);
+    
+    let selectionBox = null;
+    let initialX, initialY, finalX, finalY;
+    let isHolding = false;
+    
+    interact(refGrid)
+        .on('down', function (e) {
+            if (e.button !== 0) {
+                return;
+            }
+            // const e = event.pointer;
+            // console.log(e.target);
+            if (!(e.target.parentElement.classList.contains("textboxContainer") || e.target.parentElement.classList.contains("draggable") || e.target.parentElement.classList.contains("player"))) {
+                if (multipleSelection) {
+                    deSelectMultiElem();
+                }
+                // console.log(e.target);
+                initialX = e.clientX;
+                initialY = e.clientY;
+    
+                selectionBox = document.createElement("div");
+                selectionBox.className = "selectionBox";
+                document.body.appendChild(selectionBox);
+    
+                isHolding = true;
+            }
+        })
+        .on('move', function (event) {
+            if (isHolding) {
+                finalX = event.clientX;
+                finalY = event.clientY;
+    
+                let boxX = Math.min(initialX, finalX);
+                let boxY = Math.min(initialY, finalY);
+                let boxWidth = Math.abs(initialX - finalX);
+                let boxHeight = Math.abs(initialY - finalY);
+    
+                Object.assign(selectionBox.style, {
+                    left: boxX + "px",
+                    top: boxY + "px",
+                    width: boxWidth + "px",
+                    height: boxHeight + "px"
+                });
+                if (selectionBox) {
+                    if (!(finalX != null && finalY != null)) {
+                        return;
+                    }
+                    const elementGrid = refGrid.querySelector('.elementGrid');
+                    var left = initialX;
+                    var right = finalX;
+                    var top = initialY;
+                    var bottom = finalY;
+                    var selectElementGrid = { left: 0, top: 0, right: 0, bottom: 0 };
+                    if (initialX > finalX) {
+                        left = finalX;
+                        right = initialX;
+                    }
+                    if (initialY > finalY) {
+                        top = finalY;
+                        bottom = initialY;
+                    }
+                    let draggableItems = document.querySelectorAll(".draggable");
+                    draggableItems.forEach(el => {
+                        let rect = el.getBoundingClientRect();
+                        if (((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                            && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom))) {
+                            //the element collided with the selection box so we add it to the element grid
+                            // el.classList.add('selected');
+                            el.classList.add('selected');
+                            //then we showing the bounding box itself of the selected element
+                            // without her handles since we get the handles
+                            // from the element grid
+                            let boundingBox = el.querySelector('#boundingBox');
+                            if (boundingBox) {
+                                Array.from(boundingBox.children).forEach(child => {
+                                    child.style.display = 'none';
+                                });
+                                boundingBox.style.display = "block";
+                            }
+                            // intialize selected element grid
+                            if (selectElementGrid.left === 0) {
+                                selectElementGrid.left = rect.left;
+                                selectElementGrid.top = rect.top;
+                                selectElementGrid.right = rect.right;
+                                selectElementGrid.bottom = rect.bottom;
+                            } else {
+                                if (selectElementGrid.left > rect.left) {
+                                    selectElementGrid.left = rect.left;
+                                }
+                                if (selectElementGrid.top > rect.top) {
+                                    selectElementGrid.top = rect.top;
+                                }
+                                if (selectElementGrid.right < rect.right) {
+                                    selectElementGrid.right = rect.right;
+                                }
+                                if (selectElementGrid.bottom < rect.bottom) {
+                                    selectElementGrid.bottom = rect.bottom;
+                                }
+                            }
+                            // elementsGrid.appendChild(el);
+                            drawElementGrid(selectElementGrid);
+                        }
+                    });
+    
+                    //check if any element that was selected no longer selected
+                    let previousSelected = document.querySelectorAll('.selected');
+                    if (previousSelected) {
+                        let previousSelectedArray = Array.from(previousSelected);
+                        if (previousSelectedArray.length === 1) {
+                            elementsGrid.style.display = 'none';
+                        }
+                        previousSelectedArray.forEach(selected => {
+                            if (selected !== elementsGrid) {
+                                let rect = selected.getBoundingClientRect();
+                                if (!(((rect.left <= left && rect.right >= left) || (rect.left >= left && rect.left <= right))
+                                    && ((rect.top <= top && rect.bottom >= top) || (rect.top >= top && rect.top <= bottom)))) {
+                                    let boundingBox = selected.firstElementChild;
+                                    if (boundingBox) {
+                                        boundingBox.style.display = 'none';
+                                        Array.from(boundingBox.children).forEach(handle => {
+                                            handle.style.display = 'block';
+                                        });
+                                    }
+                                    selected.classList.remove('selected');
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        })
+        .on('up', function (event) {
+    
+            if (isHolding) {
+                // Your previous logic on mouseup
+                // ...
+                selectionBox.remove();
+                selectionBox = null;
+    
+                initialX = initialY = finalX = finalY = null;
+    
+                isHolding = false;
+                if (!elementsGrid.classList.contains('selected')) {
+                    return;
+                }
+                var selectedElements = refGrid.querySelectorAll('.selected');
+                var distanceToSubX = (parseFloat(elementsGrid.getAttribute('data-x')) || 0);
+                var distanceToSubY = (parseFloat(elementsGrid.getAttribute('data-y')) || 0);
+                Array.from(selectedElements).forEach(selected => {
+                    if (selected !== elementsGrid) {
+                        elementsGrid.appendChild(selected);
+                        var x = (parseFloat(selected.getAttribute('data-x')) || 0) - distanceToSubX;
+                        var y = (parseFloat(selected.getAttribute('data-y')) || 0) - distanceToSubY;
+                        selected.style.transform = `translate(${x}px, ${y}px)`;
+                    }
+                });
+            }
+        });
+    
+    // Prevent default behavior for dragging and selecting on refGrid
+    interact(refGrid).preventDefault('auto');
+    
+    function drawElementGrid(selectElementGrid) {
+        multipleSelection = true;
+        refGridRect = refGrid.getBoundingClientRect();
+        var elementGrid = document.querySelector('.elementGrid');
+        elementGrid.style.display = 'block';
+        elementGrid.classList.add('selected');
+        // if(elementGrid.style.display==='none') {
+        // }
+        let elX = (selectElementGrid.left - parseFloat(refGridRect.left).toFixed(2)) / scale;
+        let elY = (selectElementGrid.top - parseFloat(refGridRect.top).toFixed(2)) / scale;
+        elementsGrid.setAttribute('prev-data-x', elX);
+        elementsGrid.setAttribute('prev-data-y', elY);
+        elementGrid.setAttribute('data-x', elX);
+        elementGrid.setAttribute('data-y', elY);
+        elementGrid.style.transform = `translate(${elX}px, ${elY}px)`;
+        elementGrid.style.width = ((selectElementGrid.right - selectElementGrid.left) / scale) + 'px';
+        elementGrid.style.height = ((selectElementGrid.bottom - selectElementGrid.top) / scale) + 'px';
+    
+    }
+    
+    let isPanning = false;
+    let startPan = { x: 0, y: 0 };
+    let accPan = { x: 0, y: 0 };
+    
+    wrapperGrid.addEventListener("mousedown", (e) => {
+        if (e.button === 1) {  // Check if the middle (wheel) button is pressed
+            isPanning = true;
+            startPan = { x: (e.clientX / scale), y: (e.clientY / scale) };
+            // storeStyleBeforeChange(wrapperGrid, 'translate', lastTransform.x, lastTransform.y);
+        }
+        if (load === 0) {
+            console.log('save pos');
+            var positions = savePositions();
+            var draggableItems = document.querySelectorAll('.draggable');
+            for (let i = 0; i < draggableItems.length; i++) {
+                draggableItems[i].style.position = "absolute";
+                draggableItems[i].style.transform = 'translate(' + positions[i].x + 'px, ' + positions[i].y + 'px)';
+            }
+            load++;
+        }
+    });
+    
+    wrapperGrid.addEventListener("mousemove", (e) => {
+        if (isPanning) {
+            // Calculate the distance moved since the last mousemove event
+            let dx = e.clientX / scale - startPan.x;
+            let dy = e.clientY / scale - startPan.y;
+            // get the wrapper translate
+            const style = window.getComputedStyle(wrapperGrid)
+            const matrixValues = style.transform.match(/matrix.*\((.+)\)/)[1].split(', ');
+            const x = parseFloat(matrixValues[4]);
+            const y = parseFloat(matrixValues[5]);
+    
+            // Accumulate the total distance moved for panning
+            accPan.x = (dx * scale) + x;
+            accPan.y = (dy * scale) + y;
+    
+            // Apply the pan transformation
+            console.log('accPan.x - ' + startPan.x);
+            wrapperGrid.style.transform = `translate(${accPan.x}px, ${accPan.y}px)`;
+            lastTransform.x = accPan.x;
+            lastTransform.y = accPan.y;
+    
+            // update the bounding box
+            if (selectedElement != 0) {
+                console.log('selected element is ' + selectedElement);
+                // updateBoundingBox(selectedElement);
+            }
+            // Reset the start position for the next mousemove event
+            startPan = { x: (e.clientX / scale), y: (e.clientY / scale) };
+        }
+    });
+    
+    document.addEventListener("mouseup", (e) => {
+        if (e.button === 1) {  // Check if the middle (wheel) button is released
+            isPanning = false;
+        }
+    });
+    
+    refGrid.addEventListener('dblclick', event => {
+        if (document.selection && document.selection.empty) {
+            document.selection.empty();
+        } else if (window.getSelection) {
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+        }
+    });
+    // make the new image draggable and resizable
+    var interactElements = [];
+    interact('.draggable')
+        .draggable({
+            ignoreFrom: '.vidPause',
+            inertia: true,
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                    endOnly: true
+                }),
+                interact.modifiers.snap({
+                    targets: interactElements,
+                    relativePoints: [{ x: 0.5, y: 0.5 }]
+                })
+            ],
+            autoScroll: true,
+            listeners: {
+                start: [function (event) {
+                    // if I just enabled snapping
+                    if (isSnappingEnabled) {
+                        console.log(interactElements)
+                        interactElements.length = 0; // Clear existing targets  
+                        const targetRect = event.target.getBoundingClientRect();
+                        const gridSnap = document.querySelector('#grid-snap');
+                       console.log(interactableElements);
+                        const gridSnapRect = gridSnap.getBoundingClientRect();
+                        interactableElements.forEach(element => {
+                            if (element !== event.target) {
+                                const rect = element.getBoundingClientRect();
+    
+                                const left = (rect.left - ((targetRect.width) / 2));
+                                const right = (rect.right + ((targetRect.width) / 2));
+                                const top = (rect.top + (targetRect.height / 2));
+                                const bottom = (rect.bottom - (targetRect.height / 2));
+    
+                                //Top Left
+                                interactElements.push({ x: left, y: top, element, range: 100 });
+                                //center Left
+                                interactElements.push({ x: left, y: (rect.top + ((rect.height) / 2)), element, range: 100 });
+                                //Bottom Left
+                                interactElements.push({ x: left, y: bottom, element, range: 100 });
+    
+                                //Top Right
+                                interactElements.push({ x: right, y: top, element, range: 100 });
+                                //center Right
+                                interactElements.push({ x: right, y: (rect.top + ((rect.height) / 2)), element, range: 100 });
+                                //Bottom Right
+                                interactElements.push({ x: right, y: bottom, element, range: 100 });
+    
+                                //Left Top
+                                interactElements.push({ x: rect.left + (targetRect.width / 2), y: (rect.top - (targetRect.height) / 2), element, range: 70 });
+                                //center Top
+                                interactElements.push({ x: (rect.left + ((rect.width) / 2)), y: (rect.top - (targetRect.height) / 2), element, range: 70 });
+                                //Right Top
+                                interactElements.push({ x: (rect.right) - (targetRect.width / 2), y: (rect.top - (targetRect.height) / 2), element, range: 70 });
+    
+                                //Left Bottom
+                                interactElements.push({ x: rect.left + (targetRect.width / 2), y: (rect.bottom) + ((targetRect.height) / 2), element, range: 70 });
+                                //center Bottom
+                                interactElements.push({ x: (rect.left + ((rect.width) / 2)), y: (rect.bottom) + ((targetRect.height) / 2), element, range: 70 });
+                                //Right Bottom
+                                interactElements.push({ x: (rect.right) - (targetRect.width / 2), y: (rect.bottom) + ((targetRect.height) / 2), element, range: 70 });
+    
+                            }
+    
+                        });
+                        // console.log(interactElements);
+                        // console.log(gridSnapRect.x);
+                    } else {
+                        interactElements.length = 0;
+                    }
+                }, selectListener], move: [dragMoveListener], end: [endDragListener]
+            }
+        })
+        .resizable({
+            edges: { left: true, right: true, bottom: true, top: true },
+            // preserveAspectRatio: false,
+            // margin: 10,
+            inertia: true,
+            modifiers: [
+                interact.modifiers.restrictRect({
+                    // restriction: 'parent',
+                    elementRect: { top: 0, left: 0, bottom: 1, right: 1 },
+                    endOnly: true
+                }),
+                interact.modifiers.restrictSize({
+                    min: { width: 50, height: 50 },
+                }),
+            ],
+            listeners: {
+                start: (event) => {
+                    target = event.target;
+                    undoList.push({
+                        element: target,
+                        property: 'resize',
+                        height: target.getBoundingClientRect().height,
+                        width: target.getBoundingClientRect().width,
+                        x: parseFloat(target.getAttribute('data-x')),
+                        y: parseFloat(target.getAttribute('data-y'))
+                    });
+                }, move: resizeMoveListener, end: endResizeListener
+            },
+            ignoreFrom: '.vidPause',
+        });
+    function toggleSnapping() {
+        isSnappingEnabled = !isSnappingEnabled;
+        console.log('works');
+    }
+    ipcRenderer.on('toggle-snap-elements', toggleSnapping);
+}
+
 
 function hideAllCloseButtons() {
     let closeButtons = document.querySelectorAll('.close-button');
@@ -924,8 +762,6 @@ function hideAllCloseButtons() {
 // hide close button when click anywhere else on the document
 document.addEventListener('click', function(event) {
     var centerGrid = document.getElementById('grid-snap').getBoundingClientRect();
-    centerPoint.x = centerGrid.width/2;
-    centerPoint.y = centerGrid.height/2;
     console.log(event.target);
     selectedElement=0;
     hideAllCloseButtons();
@@ -1032,6 +868,7 @@ function dragMoveListener(event) {
         }
         load++;
     }
+    console.log(elementsGrid.parentElement);
     if(elementsGrid.classList.contains('selected')) {
         var x = (parseFloat(elementsGrid.getAttribute('data-x')) || 0) + (event.dx/scale);
         var y = (parseFloat(elementsGrid.getAttribute('data-y')) || 0) + (event.dy/scale);
@@ -1054,8 +891,6 @@ function dragMoveListener(event) {
         target.style.transform = 'translate(' + x + 'px, ' + y + 'px)';
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
-        translation.x = x;
-        translation.y = y;
     }
 
     getOutOfBoundTravel(event.target);
@@ -1119,25 +954,21 @@ function resizeCanvas() {
     // var boundBoxY = boundBox.getBoundingClientRect().y;
     // console.log('this is the grid y - ' + boundRect.y);
     if (lastPos.right>0) {
-        pos.right += lastPos.right;
+        // pos.right += lastPos.right;
         contStyle.width = ((boundRect.width/scale + lastPos.right) + 'px');
     }
     if (lastPos.bottom>0) {
-        pos.bottom += lastPos.bottom;
+        // pos.bottom += lastPos.bottom;
         contStyle.height = ((boundRect.height/scale + lastPos.bottom) + 'px');
         //change bounding box y since when we increase the grid width we are also changing the intial y of the boundingBox since
         // it is placed on the same depth level as the wrapper and so it is using the x y cordinate system of the body.
     }
     lastPos.bottom = 0;
     lastPos.right = 0;
-    centerPoint.x = boundRect.width/2;
-    centerPoint.y = boundRect.height/2;
     document.body.offsetHeight;
     if(selectedElement!=0) {
         // updateBoundingBox(event);
     }
-    // boundingBox.style.transform = 'translate(' + (boundRect.x + translation.x - 7) + 'px, ' + (boundRect.y + translation.y -7) + 'px)';
-    // boundBox.style.transform = 'translate( ' + boundBoxX-7 + 'px , ' + boundBoxY-7 + 'px )';
 }
 
 function resizeMoveListener(event) {
@@ -1174,8 +1005,6 @@ function resizeMoveListener(event) {
         target.style.transform = 'translate(' + x + 'px,' + y + 'px)';
         target.setAttribute('data-x', x);
         target.setAttribute('data-y', y);
-        translation.x = x;
-        translation.y = y;
     }
     getOutOfBoundTravel(event.target);
     window.requestAnimationFrame(function() {
@@ -1265,28 +1094,6 @@ interact('#grid-snap').on('tap', function(event) {
     }
 });
 
-function updateBoundingBox(element) {
-    if(!isDragging) return;
-    var targetRect = 0;
-    if(element.target) {
-        targetRect = element.target.getBoundingClientRect();
-    }else {
-        targetRect = element.getBoundingClientRect();
-    }
-    //get the boundingBox element
-    const boundingBox = document.querySelector('#boundingBox');
-    var boundWidth = targetRect.width;
-    var boundHeight = targetRect.height
-    boundingBox.style.display = 'block';
-    // get the grid transition to calculate the new transition of the grid
-    let gridSnap = document.getElementById('grid-snap').getBoundingClientRect();
-    // boundingBox.style.transform = 'translate(' + (gridSnap.x + translation.x - 7)+ 'px, ' + (gridSnap.y + translation.y -7) + 'px)';
-    boundingBox.style.left = targetRect.x + 'px';
-    boundingBox.style.top = targetRect.y + 'px';
-    boundingBox.style.width = (boundWidth-3) + 'px';
-    boundingBox.style.height = (boundHeight-3) + 'px';
-}
-
 function savePositions() {
     let positions = [];
     let width = window.getComputedStyle(document.getElementById('grid-snap'), null).getPropertyValue('width');
@@ -1316,17 +1123,77 @@ function savePositions() {
 
 // JavaScript
 // Create a new draggable text box
-function createNewNote() {
-    const textbox = document.createElement('div');
-    textbox.className = 'textboxContainer';
-    textbox.style.overflow = 'revert';
-    textbox.style.position = 'absolute';
-    
-    const textarea = document.createElement('textarea');
-    textarea.className = 'textbox';
-    textarea.textContent = 'Note';
-    textarea.disabled = 'true';
+function createNewNote(note) {
+    var textbox = null;
+    var textarea = null;
+    var closeButton = null;
+    var fontColorButton = null;
+    var fontButton = null;
+    var outlineColorButton = null;
+    if(!note) {      
+        textbox = document.createElement('div');
+        textbox.className = 'textboxContainer';
+        textbox.id = noteId++;
+        // textbox.setAttribute('id', noteId++);
+        textbox.style.overflow = 'revert';
+        textbox.style.position = 'absolute';
+        
+        textarea = document.createElement('textarea');
+        textarea.className = 'textbox';
+        textarea.textContent = 'Note';
+        textarea.disabled = 'true';
 
+        // Create bounding box
+        let boundingBox = document.createElement('div');
+        boundingBox.id = 'boundingBox';
+        textbox.appendChild(boundingBox);
+
+        // Add handles to the bounding box
+        const handles = ["tl", "tm", "ml", "tr", "mr", "bl", "bm", "br"];
+        handles.forEach(handle => {
+            let div = document.createElement('div');
+            div.className = `square handle-${handle}`;
+            boundingBox.appendChild(div);
+        });
+        closeButton = document.createElement('button');
+        closeButton.className = 'close-button';
+        // closeButton.textContent = String.fromCodePoint(0x1F534);
+        closeButton.textContent = 'X';
+        closeButton.style.display = 'none'; // initially, the close button is hidden
+
+        fontColorButton = document.createElement('button');
+        fontColorButton.className = 'font-Color-Select';
+        fontColorButton.innerHTML = 'T';
+        fontColorButton.style.display = 'none';
+
+        fontButton = document.createElement('button');
+        fontButton.className = 'font-Select';
+        fontButton.innerHTML = 'T';
+        fontButton.style.display = 'none';
+
+        outlineColorButton = document.createElement('button');
+        outlineColorButton.className = 'outline-Color-Select';
+        outlineColorButton.innerHTML = 'T';
+        outlineColorButton.style.display = 'none';
+
+        textbox.appendChild(fontColorButton);
+        textbox.appendChild(fontButton);
+        textbox.appendChild(outlineColorButton);
+        textbox.appendChild(closeButton);
+        textbox.appendChild(textarea);
+        
+        document.getElementById('grid-snap').appendChild(textbox);
+    }else {
+        console.log('load works\n')
+        textbox = note;
+        textarea = note.querySelector('.textbox');
+        closeButton = note.querySelector('.close-button');
+        fontColorButton = note.querySelector('.font-Color-Select');
+        fontButton = note.querySelector('.font-Select');
+        outlineColorButton = note.querySelector('.outline-Color-Select');
+    }
+    console.log(textarea);
+        
     textarea.addEventListener('dblclick', event => {
         if (document.selection && document.selection.empty) {
             document.selection.empty();
@@ -1352,39 +1219,6 @@ function createNewNote() {
         }
     });
     // textarea.style.fontSize='100%';
-    
-    // Create bounding box
-    let boundingBox = document.createElement('div');
-    boundingBox.id = 'boundingBox';
-    textbox.appendChild(boundingBox);
-
-    // Add handles to the bounding box
-    const handles = ["tl", "tm", "ml", "tr", "mr", "bl", "bm", "br"];
-    handles.forEach(handle => {
-        let div = document.createElement('div');
-        div.className = `square handle-${handle}`;
-        boundingBox.appendChild(div);
-    });
-    const closeButton = document.createElement('button');
-    closeButton.className = 'close-button';
-    // closeButton.textContent = String.fromCodePoint(0x1F534);
-    closeButton.textContent = 'X';
-    closeButton.style.display = 'none'; // initially, the close button is hidden
-    
-    const fontColorButton = document.createElement('button');
-    fontColorButton.className = 'font-Color-Select';
-    fontColorButton.innerHTML = 'T';
-    fontColorButton.style.display='none';
-
-    const fontButton = document.createElement('button');
-    fontButton.className = 'font-Select';
-    fontButton.innerHTML = 'T';
-    fontButton.style.display='none';
-    
-    const outlineColorButton = document.createElement('button');
-    outlineColorButton.className = 'outline-Color-Select';
-    outlineColorButton.innerHTML = 'T';
-    outlineColorButton.style.display='none';
 
     fontColorButton.onclick = (event) => {
         showColorPickModal(event, 'font');
@@ -1402,21 +1236,24 @@ function createNewNote() {
         textbox.remove();
     });
 
-
-    textbox.appendChild(fontColorButton);
-    textbox.appendChild(fontButton);
-    textbox.appendChild(outlineColorButton);
-    textbox.appendChild(closeButton);
-    textbox.appendChild(textarea);
-    
-    document.getElementById('grid-snap').appendChild(textbox);
-
     textbox.addEventListener('click', function(event) {
         event.stopPropagation(); // prevent the document click event from firing
         hideAllCloseButtons();
         let closeButton = this.querySelector('.close-button');
         if (closeButton) {
             closeButton.style.display = 'block';
+            deSelectMultiElem();//if multiple elements are selected then deselect them
+            
+            //deselect any selected elements and hide their bounding box
+            selectedElements = document.querySelectorAll('selected');
+            Array.from(selectedElements).forEach((element) => { 
+                let boundingBox = element.querySelector('#boundingBox')
+                boundingBox.style.display = none;
+                let closeButton = element.querySelector('button');
+                closeButton.style.display = 'none';
+                element.classList.remove('selected');
+            });
+
             selectedElement = event;
             if(event.target.disabled) {
                 let boundingBox = this.querySelector('#boundingBox');
@@ -1618,27 +1455,19 @@ function adjustAfterResize(event) {
 }
 function disableNoteState(event) {
     const note = event.target;
-    note.querySelector('.textbox').disabled = true;
-    note.querySelector('.font-Select').style.display = 'none';
-    note.querySelector('.font-Color-Select').style.display = 'none';
-    note.querySelector('.outline-Color-Select').style.display = 'none';
-    isInteracting=true;
+    if(note) {
+        note.querySelector('.textbox').disabled = true;
+        note.querySelector('.font-Select').style.display = 'none';
+        note.querySelector('.font-Color-Select').style.display = 'none';
+        note.querySelector('.outline-Color-Select').style.display = 'none';
+        isInteracting=true;
+    }
 }
 
-// document.addEventListener('click', function(event) {
-//     hideAllCloseButtons();
-// });
-
-// function hideAllCloseButtons() {
-//     let closeButtons = document.querySelectorAll('.close-button');
-//     closeButtons.forEach(function(button) {
-//         button.style.display = 'none';
-//     });
-// }
-
-  
 // Listen for the 'create-new-note' event
-ipcRenderer.on('create-new-note', createNewNote);
+ipcRenderer.on('create-new-note', function() {
+    createNewNote(null);
+});
 
 // Get Element Max Focused Size - used to see the max amount of scale by the scale factor so that a 'focused element' will fit the
 // user window
@@ -1671,9 +1500,7 @@ function getElementMaxFocusedSize(targetWidth, targetHeight, currScale, directio
     }
     return maxScale;
 }
-function handleZoom(event) {
-    
-}
+
 document.addEventListener('keydown', function(event) {
     if((event.key !== 'ArrowRight') && (event.key !== 'ArrowLeft')) {
         console.log(event.key);
@@ -1710,18 +1537,15 @@ document.addEventListener('keydown', function(event) {
         selectedElement.style.zIndex = ++zIndex;
         let boundBox = selectedElement.querySelector('#boundingBox');
         boundBox.style.display = 'block';
-        // updateBoundingBox(target);
     }
 });
 
 
 function updateF(target, maxScale) {
-    // savePositions();
     var gridSnap = document.getElementById('grid-snap');
     var gridRect = gridSnap.getBoundingClientRect();
     var wrapper = document.getElementsByClassName('wrapper-grid')[0];
     var targetRect = target.getBoundingClientRect();
-    const boundingBox = document.querySelector('#boundingBox');
     var scaledWidth = (targetRect.width/scale)*maxScale;
     var scaledHeight = (targetRect.height/scale)*maxScale;
 
@@ -1737,10 +1561,6 @@ function updateF(target, maxScale) {
         centerX = (reminderWidth) + ((((lastTransform.x-targetRect.x)/scale)*maxScale));
         centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
     }
-    // if(gridRect.x>0) {
-    //     console.log('2');
-    //     centerX = reminderWidth - ((targetRect.x-lastReminderWidth)/scale)*maxScale;
-    // }
     if(((((targetRect.y-gridRect.y)/scale)*maxScale) + reminderHeight + scaledHeight)>window.innerHeight) {
         console.log('4');
         centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
@@ -1748,15 +1568,6 @@ function updateF(target, maxScale) {
     if(((((targetRect.x-gridRect.x)/scale)*maxScale) + reminderWidth + scaledWidth)>window.innerWidth) {
         centerX = reminderWidth + (((((targetRect.x-gridRect.x)/scale)*maxScale) - targetRect.x)*-1) + (lastTransform.x-targetRect.x) - gridRect.x;
     }
-    // if(((((targetRect.x-gridRect.x)/scale)*maxScale) + reminderWidth + scaledWidth)>window.innerWidth) {
-    //     console.log('4');
-    //     centerY = reminderHeight + (((((targetRect.y-gridRect.y)/scale)*maxScale) - targetRect.y)*-1) + (lastTransform.y-targetRect.y) - gridRect.y;
-    // }
-    // if(gridRect.y>0 && lastTransform.y!=0) {
-    //     console.log('3');
-    //     centerY = reminderHeight + (lastTransform.y-lastReminderHeight);
-    // }
-
 
     if(scale != maxScale) {
         lastReminderWidth = reminderWidth;
@@ -1770,10 +1581,6 @@ function updateF(target, maxScale) {
     gridSnap.style.transform = `scale3D(${maxScale}, ${maxScale}, ${maxScale})`;
     wrapper.style.transform = `translate(${centerX}px, ${centerY}px)`;
 }
-
-
-//video player functionality
-const videos = document.querySelectorAll('video');
 
 //VIDEO PROGRESS BAR: TIME TO WIDTH
 const handleProgress = (event) => {
@@ -1792,7 +1599,6 @@ const handleProgress = (event) => {
 }
 
 let isScrubbing = false
-let wasPaused
 function toggleScrubbing(e) {
     e.preventDefault();
     const progressBar = e.target;
@@ -1807,9 +1613,6 @@ function toggleScrubbing(e) {
     video.classList.toggle("scrubbing", isScrubbing);
     if (isScrubbing) {
         progressBar.classList.add('scrubbing');
-        // wasPaused = video.paused;
-        // console.log('scrub');
-        // video.pause();
     } else {
         progressBar.classList.remove('scrubbing');
         var b = parseFloat(video.getAttribute('startTime'));
@@ -1819,6 +1622,12 @@ function toggleScrubbing(e) {
 
     handleTimelineUpdate(e)
 }
+document.addEventListener("mouseup", e => {
+    if (isScrubbing) toggleScrubbing(e);
+});
+document.addEventListener("mousemove", e => {
+    if (isScrubbing) handleTimelineUpdate(e);
+});
 
 function handleTimelineUpdate(e) {
     const progressBar = e.target;
@@ -1829,18 +1638,10 @@ function handleTimelineUpdate(e) {
     }
     const rect = progressBar.getBoundingClientRect();
     const percent = (Math.min(Math.max(0, e.x - rect.x), rect.width) / rect.width);
-
-    // const previewImgNumber = Math.max(
-    //     1,
-    //     Math.floor((percent * video.duration) / 10)
-    // )
-    // const previewImgSrc = `assets/previewImgs/preview${previewImgNumber}.jpg`
-    // previewImg.src = previewImgSrc
     progressBar.parentElement.style.setProperty("--preview-position", percent);
 
     if (isScrubbing) {
         e.preventDefault();
-        // thumbnailImg.src = previewImgSrc
         progressBar.parentElement.style.setProperty("--progress-position", percent)
     }
 }
@@ -1870,26 +1671,6 @@ function togglePlayPause(event) {
         
     }
 }
-
-// function openModalWithVideo(videoPath) {
-//     let modal = document.getElementById("videoTrimModal");
-//     let closeModalBtn = modal.querySelector(".close");
-//     let videoElement = modal.querySelector("#trimVideoPlayer");
-  
-//     videoElement.src = videoPath;
-//     modal.style.display = "block";
-  
-//     closeModalBtn.onclick = function() {
-//       modal.style.display = "none";
-//     }
-  
-//     // When the user clicks anywhere outside of the modal, close it
-//     window.onclick = function(event) {
-//       if (event.target == modal) {
-//         modal.style.display = "none";
-//       }
-//     }
-//   }
 
   function createTrimModalForVideo(videoPath) {
     let modal = document.createElement('div');
@@ -1926,7 +1707,7 @@ function togglePlayPause(event) {
 }
 let handleModalClosure;
 function showTrimModal(videoPath, callback) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         handleModalClosure = () => {
             resolve();  // This assigns the resolve function for future use.
         };
@@ -1948,16 +1729,11 @@ function showTrimModal(videoPath, callback) {
         var startTime = 0;
         var endTime = videoElem.duration;
 
-        
-        const rangeWidth = startSlider.offsetWidth;
-        
-        
         videoElem.onloadedmetadata = function() {
             startSlider.max = videoElem.duration;
             endSlider.max = videoElem.duration;
             videoData.startTime = 0;
             videoData.endTime = videoElem.duration;
-            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${0}%, rgba(50, 100, 254, 0.5) ${0}%, rgba(50, 100, 254, 0.5) ${100}%, rgba(218, 218, 229, 0.5) ${100}%)`;
             generateTimeRollerAndFrames(videoElem.duration);
         };
         
@@ -1995,7 +1771,6 @@ function showTrimModal(videoPath, callback) {
             //color the selected range
             var percent1 = (startSlider.value / videoElem.duration) * 100;
             var percent2 = (endSlider.value / videoElem.duration) * 100;
-            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent2}%, rgba(218, 218, 229, 0.5) ${percent2}%)`;
             //set the rangeTrack
             rangeTrack.style.left = percent1+'%';
             rangeTrack.style.width = ((100-percent1)-(100-percent2))+'%';
@@ -2010,7 +1785,6 @@ function showTrimModal(videoPath, callback) {
             //color the selected range
             var percent1 = (startSlider.value / videoElem.duration) * 100;
             var percent2 = (endSlider.value / videoElem.duration) * 100;
-            // sliderContainer.style.background = `linear-gradient(to right, rgba(218, 218, 229, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent1}%, rgba(50, 100, 254, 0.5) ${percent2}%, rgba(218, 218, 229, 0.5) ${percent2}%)`;
             //set the rangeTrack
             rangeTrack.style.left = percent1+'%';
             rangeTrack.style.width = ((100-percent1)-(100-percent2))+'%';
@@ -2143,9 +1917,6 @@ function showColorPickModal(event, type) {
         g = modal.querySelector(".green").value;
         b = modal.querySelector(".blue").value;
         setColor(`rgba(${r},${g},${b},${opacity.value})`, previusColor, modal);
-        // const opacityVal = opacity.parentElement.querySelector('opacityVal');
-        // console.log(opacityVal.value);
-        // opacityVal.value = opacity.value;
     });
 
     const spectrumRanges = [
@@ -2353,15 +2124,7 @@ function showColorPickModal(event, type) {
         event.target.parentElement.querySelector('.textbox').style.color = previusColor;
         closeColorModal(modal);
     });
-    // opacity.addEventListener('input', ()=>{
-    //     const r = modal.querySelector('.red').value = rgba.r;
-    //     const g = modal.querySelector('.green').value = rgba.g;
-    //     const b = modal.querySelector('.blue').value = rgba.b;
-    //     var a = opacity.value;
-    //     setColor(`rgba(${r},${g},${b},${a})`, previusColor, modal);
-    //     setColorSlider({r,g,b,a}, previusColor, modal, event);
 
-    // });
 
     //if the user clicks anywhere else but the color selection modal
     // update -- currently I've set it so only the coresponding button will change, and so the forEach is not needed
@@ -2402,14 +2165,7 @@ function updateFontColor(event, opacity, modal, type) {
     const b = modal.querySelector('.blue').value;
     const noteContainer = event.target.parentElement;
     const note = noteContainer.querySelector('.textbox');
-    // noteContainer.querySelectorAll('button').forEach(function(button) {
-    //     if(type==='font') {
-    //         button.style.color = `rgba(${r},${g},${b},${opacity.value})`;
-    //     }
-    //     else if(type==='outline') {
-    //         button.style.background = `rgba(${r},${g},${b},${opacity.value})`;
-    //     }
-    // });
+
     if(type==='font') {
         note.style.color = `rgba(${r},${g},${b},${opacity.value})`;
         event.target.style.color = `rgba(${r},${g},${b},${opacity.value})`;
@@ -2653,9 +2409,30 @@ function moveColorPointer(h, s, l) {// @param is equal to (r,g,b) or (h,s,l) if 
     colorPointer.style.top = `${topPosition}px`;
 }
 
+let tempPresetList = null;
 function createFontModal() {
+    // In case we have just loaded a file, 
+    // we check if the presetList is a string or an element, 
+    // since we can't save elements in a json format
+    // 
+    // an altertantive for it would be to create the preset list
+    // with javascript, and re assign the HTML we get over,
+    // but that would also mean that we will save the innerHTML
+    // string over and over again instead of saving the element
+    // as is, I'm not sure which is actually better,
+    // cause I'm not sure how elements are stored in memmory 
+    // need to check in the future
+    if(typeof globalPresetList === 'string') {
+        tempPresetList = globalPresetList;
+        console.log('true String')
+    }
+    else if(globalPresetList) {
+        tempPresetList = globalPresetList.innerHTML;
+    }
+
     let modal = document.createElement('div');
     modal.classList.add('modal-font');
+    
     let fontPickModalContent = `
         <div class="modal-content-font">
             <div class="font-list-wrap">
@@ -2779,7 +2556,7 @@ function createFontModal() {
                 <span class="preset-header">Presets</span>
                 <button class="save-preset-btn">Save Current as Preset</button>
                 <div class="preset-list">
-                    ${globalPresetList ? globalPresetList.innerHTML : `
+                    ${tempPresetList ? tempPresetList : `
                         <div class="preset-item">NaN</div>
                         <div class="preset-item">NaN</div>
                         <div class="preset-item">NaN</div>
@@ -3167,6 +2944,7 @@ function showFontPickModal(event) {
     };
 
         const prevFontStyle = window.getComputedStyle(note);
+        // noteContainer.setAttribute('sizeRelative', false);
 
         
         
@@ -3196,7 +2974,8 @@ function showFontPickModal(event) {
 
         // On intial set the font size range to 
         // the current font size
-        fontSizeRange.value = prevFontStyle.getPropertyValue('font-size');
+        console.log('font size ' + prevFontStyle.getPropertyValue('font-size') )
+        fontSizeRange.value = prevFontStyle.getPropertyValue('font-size').replace('px','');
         fontSizeRange.previousElementSibling.innerHTML = fontSizeRange.value + 'px';
         prevFont.fontSize = fontSizeRange.value;
         preview.style.fontSize = prevFont.fontSize+'px';
@@ -3210,7 +2989,7 @@ function showFontPickModal(event) {
         }
 
         // init check if Superscript
-        if((prevFontStyle.getPropertyValue('vertical-align') === 'super') && (prevFontStyle.getPropertyValue('font-size') === '0.8em') ) {
+        if((prevFontStyle.getPropertyValue('vertical-align') === 'super') ) {
             effectCheckboxs[1].checked = true;
             prevFont.Superscript = true;
         }
@@ -3281,6 +3060,7 @@ function showFontPickModal(event) {
 
     function updateFont(param ,flag, target) {
         const preview = fontPreview.querySelector('.preview-box-font');
+        let activeTextLineStyles = new Set();
         if(param==='all') {
             //revert 
             //=======
@@ -3524,26 +3304,30 @@ function showFontPickModal(event) {
     presetSection.querySelector('button').addEventListener('click', function() {
         savePreset(initFont());
     });
+    var i=0;
     Array.from(presetList.children).forEach((p) => {
         p.addEventListener('click', function() {
-            const fontPreset = JSON.parse(p.getAttribute('fontpreset'));
-            console.log(fontPreset.fontFamily);
-            presetLoad(fontPreset);
+            // const fontPreset = JSON.parse(p.getAttribute('fontpreset'));
+            const fontPreset = presetData[i++];
+            if(fontPreset) {
+                console.log(fontPreset.fontFamily);
+                presetLoad(fontPreset);
+            }
         });
     });
+    i=0;
     function savePreset(currentFontPreset) {
         presetList.removeChild(presetList.lastElementChild);
-        
+        let activeTextLineStyles = new Set();
         let newPreset = document.createElement('div');
         newPreset.className = 'preset-item';
         newPreset.innerHTML = 'Text';
-        var ef = '';
         newPreset.style.fontFamily = currentFontPreset.fontFamily;
         newPreset.style.fontSize = currentFontPreset.fontSize+'px';
         newPreset.style.fontWeight = currentFontPreset.fontStyle.weight;
         newPreset.style.fontStyle = currentFontPreset.fontStyle.style;
         if(currentFontPreset.Strikethrough) {
-            newPreset.style.textDecorationLine = 'line-through';
+            activeTextLineStyles.add('line-through');
         }
         
         if(currentFontPreset.Superscript) {
@@ -3553,17 +3337,12 @@ function showFontPickModal(event) {
         }
 
         if(currentFontPreset.Underlined) {
-            ef = 'underline';
-            newPreset.style.textDecorationLine = 'underline';
+            activeTextLineStyles.add('underline');
         }
 
         console.log('\n\n\n'+currentFontPreset.Overlined);
         if(currentFontPreset.Overlined) {
-            if(ef==='') {
-                newPreset.style.textDecorationLine = 'overline';
-            }else {
-                newPreset.style.textDecorationLine = 'underline overline';
-            }
+            activeTextLineStyles.add('overline');
         }
 
         if(currentFontPreset.SmallCaps) {
@@ -3573,8 +3352,20 @@ function showFontPickModal(event) {
         if(currentFontPreset.AllCaps) {
             newPreset.style.textTransform = 'uppercase';
         }
-        const fontPresetString = JSON.stringify(currentFontPreset);
-        newPreset.setAttribute('fontpreset', fontPresetString);
+
+        //update textDecorationLineStyles
+        let stylesString = Array.from(activeTextLineStyles).join(' ');
+        newPreset.style.textDecorationLine = stylesString;
+
+
+
+        // const fontPresetString = JSON.stringify(currentFontPreset);
+
+        if(presetData>=6) {
+            presetData.pop();
+        }
+        presetData.unshift(currentFontPreset);
+        // newPreset.setAttribute('fontpreset', fontPresetString);
         presetList.insertBefore(newPreset, presetList.firstElementChild);
         globalPresetList = presetList;
     }
@@ -3582,6 +3373,7 @@ function showFontPickModal(event) {
         if(preset.fontFamily===undefined) {
             return;
         }
+        let activeTextLineStyles = new Set();
         console.log(preset);
         //font family
         note.style.fontFamily = preset.fontFamily;
@@ -3592,7 +3384,7 @@ function showFontPickModal(event) {
         preview.style.fontSize = preset.fontSize+'px';
 
         //style
-        console.log(preset.fontFamily);
+        console.log(preset.Superscript);
         event.target.style.fontStyle = `${preset.fontStyle.style}`;
         note.style.fontStyle = `${preset.fontStyle.style}`;
         preview.style.fontStyle = `${preset.fontStyle.style}`;
@@ -3626,20 +3418,21 @@ function showFontPickModal(event) {
         // init check if strikethrough
         if(preset.Strikethrough) {
             effectCheckboxs[0].checked = true;
-            ef = event.target.style.textDecorationLine.concat(' ', `line-through`);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
+            if(!activeTextLineStyles.has('line-through')) {
+                activeTextLineStyles.add('line-through');
+            }
         }else {
             effectCheckboxs[0].checked = false;
-            ef = event.target.style.textDecorationLine.replace(`line-through`, ``);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
-
+            if(activeTextLineStyles.has('line-through')) {
+                activeTextLineStyles.delete('line-through');
+            }
         }
+        console.log(preset.Superscript);
 
         // init check if Superscript
         if(preset.Superscript) {
             effectCheckboxs[1].checked = true;
+            console.log('Heyyyy');
             note.style.fontSize = `0.8em`;
             preview.style.fontSize = `0.8em`;
 
@@ -3661,33 +3454,29 @@ function showFontPickModal(event) {
         }
 
         //init check if UnderLined
-        if(preset.UnderLined) {
+        if(preset.Underlined) {
             effectCheckboxs[2].checked = true;
-            ef = event.target.style.textDecorationLine.concat(' ', `underline`);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
-            preview.style.textDecorationLine = ef;
+            if(!activeTextLineStyles.has('underline')) {
+                activeTextLineStyles.add('underline');
+            }
         }else {
             effectCheckboxs[2].checked = false;
-            ef = event.target.style.textDecorationLine.replace('underline', ``);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
-            preview.style.textDecorationLine = ef;
+            if(activeTextLineStyles.has('underline')) {
+                activeTextLineStyles.delete('underline');
+            }
         }
 
         //init check if OverLined
-        if(preset.OverLined) {
+        if(preset.Overlined) {
             effectCheckboxs[3].checked = true;
-            ef = event.target.style.textDecorationLine.concat(' ', `overline`);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
-            preview.style.textDecorationLine = ef;
+            if(!activeTextLineStyles.has('overline')) {
+                activeTextLineStyles.add('overline');
+            }
         }else {
             effectCheckboxs[3].checked = false;
-            ef = event.target.style.textDecorationLine.replace('overline', ``);
-            event.target.style.textDecorationLine = ef;
-            note.style.textDecorationLine = ef;
-            preview.style.textDecorationLine = ef;
+            if(activeTextLineStyles.has('overline')) {
+                activeTextLineStyles.delete('overline');
+            }
         }
 
         //init check if Small caps
@@ -3715,6 +3504,11 @@ function showFontPickModal(event) {
             note.style.textTransform = `unset`;
             preview.style.textTransform = `unset`;
         }
+        //update textdecorationline
+        let stylesString = Array.from(activeTextLineStyles).join(' ');
+        event.target.style.textDecorationLine = stylesString;
+        note.style.textDecorationLine = stylesString;
+        preview.style.textDecorationLine = stylesString;
 
         //init check text align
         if(preset.textAlign !== 'start') {
@@ -3754,37 +3548,304 @@ function showFontPickModal(event) {
     }
 
 }
+
 function closeFontModal(modal) {
     colorModalOpen = false;
     modal.remove();
 
 }
-// var change = false;
-// function checkSnap(event) {
-//     // if I just enabled snapping
-//     if(isSnappingEnabled) {
-//         // interactElements.length = 0; // Clear existing targets  
-//         interactableElements.forEach(element => {
-//             const rect = element.getBoundingClientRect();
-//             return {
-//                 interactElements.push({ x: (parseFloat(element.getAttribute('data-x')) || rect.left), element, range:20 });
-//                 interactElements.push({ x: ((parseFloat(element.getAttribute('data-x'))+(scale*rect.width)) || rect.right), element, range:20 });
-//                 interactElements.push({ y: (parseFloat(element.getAttribute('data-y')) || rect.top), element, range:20 });
-//                 interactElements.push({ y: ((parseFloat(element.getAttribute('data-y'))+(scale*rect.height)) || rect.bottom), element, range:20 });
-//             };
-//         });
-        
-//     }
+
+// function updateSnap(event) {
+//     console.log('update')
 // }
-function updateSnap(event) {
-    console.log('update')
+
+function saveProject() {
+    // check if any modal is open
+    // and ask the user if he wishes to save
+    // any changes he made
+    if (colorModalOpen) {
+
+    }
+
+    //Elements Grid,
+    // check that no drag element is appended
+    // if there is appended drag elem to Elements grid
+    // then deSelect it so 
+    // it will retain it's position within grid snap
+    // and then save positions
+    deSelectMultiElem();
+
+    // check if any container is selected and 
+    // de select it
+    selectedElements = document.querySelectorAll('selected');
+    Array.from(selectedElements).forEach((element) => {
+        let boundingBox = element.querySelector('#boundingBox')
+        boundingBox.style.display = none;
+        let closeButton = element.querySelector('button');
+        closeButton.style.display = 'none';
+        element.classList.remove('selected');
+    });
+
+    //save the entireHtml
+    const savedHTML = document.querySelector('.wrapper-grid').outerHTML;
+
+    //save data of the draggable elements
+    const containersData = Array.from(document.querySelectorAll('.draggable')).map(container => {
+        const isVideo = container.querySelector('video') !== null;
+        let containerData = {
+            id: container.id,
+            dataX: container.getAttribute('data-x'),
+            dataY: container.getAttribute('data-y'),
+            width: container.style.width,
+            height: container.style.height,
+            type: isVideo ? 'video' : 'image',
+            //... other common data
+        };
+
+        if (isVideo) {
+            const videoElement = container.querySelector('video');
+            const progressBar = container.querySelector('.progress');
+            containerData.videoData = {
+                src: videoElement.src,
+                startTime: videoElement.getAttribute('starttime'),
+                endTime: videoElement.getAttribute('endtime'),
+                events: {
+                    'timeupdate': 'handleProgress',
+                    '.progress': {
+                        'mousemove': 'handleTimelineUpdate',
+                        'mousedown': 'toggleScrubbing'
+                    }
+                }
+            };
+        } else {
+            const imageElement = container.querySelector('img');
+            containerData.imageData = {
+                src: imageElement.src,
+                //... other image-related data
+            };
+        }
+
+        return containerData;
+    });
+
+
+    //save notes data
+    const notesData = Array.from(document.querySelectorAll('.textboxContainer')).map(note => {
+        const textarea = note.querySelector('.textbox');
+        return {
+            id: note.id,
+            position: {
+                x: note.getAttribute('data-x'),
+                y: note.getAttribute('data-y')
+            },
+            dimensions: {
+                width: note.style.width,
+                height: note.style.height
+            },
+            zIndex: note.style.zIndex,
+            textContent: textarea.value,  // assuming notes' text can change
+            fontColor: textarea.style.color,
+            fontSize: textarea.style.fontSize,
+            fontFamily: textarea.style.fontFamily,
+            fontStyle: textarea.style.fontStyle,
+            fontWeight: textarea.style.fontWeight,
+            fontDecoLine: textarea.style.textDecorationLine,
+            fontverticalAlign: textarea.style.verticalAlign,
+            fontLineHeight: textarea.style.lineHeight,
+            fontVariant: textarea.style.fontVariant,
+            textTransform: textarea.style.textTransform,
+            textAlign: textarea.style.textAlign,
+            textPadding: textarea.style.padding,
+            textPaddingLeft: textarea.style.paddingLeft,
+            textPaddingRight: textarea.style.paddingRight,
+            textPaddingTop: textarea.style.paddingTop,
+            textPaddingBottom: textarea.style.paddingBottom,
+            textGrow: note.getAttribute('sizeRelative')
+        };
+    });
+    const additionalVariables = {
+        lastTransform: lastTransform,
+        lastReminderHeight: lastReminderHeight,
+        centerX: centerX,
+        centerY: centerY,
+        zIndex: zIndex,
+        load: load,
+        scale: scale,
+        lastPos: lastPos,
+        currVid: currVid,
+        videoData: videoData,
+        globalPresetList: globalPresetList?globalPresetList.innerHTML:null,
+        presetData: presetData,
+        isSnappingEnabled: isSnappingEnabled,
+        noteId: noteId,
+    };
+
+    const saveData = {
+        html: savedHTML,
+        containersData: containersData,
+        notesData: notesData,
+        additionalVariables: additionalVariables,
+    };
+
+    const saveDataJSON = JSON.stringify(saveData);
+
+    // Open save dialog
+    ipcRenderer.send('save-project-data', saveDataJSON);
+}
+ipcRenderer.on('save-project', saveProject);
+
+async function loadProject(data) {
+    console.log(data);
+    console.log(wrapper);
+    var presetIndex=0;
+    tempWrap = wrapper;
+    wrapper = wrapper.firstElementChild;
+    document.body.append(wrapper);
+    tempWrap.remove();
+    gridSnap = wrapper.firstElementChild;
+    elementsGrid = gridSnap.firstElementChild;
+    lastTransform = data.additionalVariables.lastTransform;
+    lastReminderHeight = data.additionalVariables.lastReminderHeight;
+    centerX = data.additionalVariables.centerX;
+    centerY = data.additionalVariables.centerY;
+    zIndex = data.additionalVariables.zIndex;
+    load = data.additionalVariables.load;
+    scale = data.additionalVariables.scale;
+    lastPos = data.additionalVariables.lastPos;
+    globalPresetList = data.additionalVariables.globalPresetList;
+    presetData = data.additionalVariables.presetData;
+    isSnappingEnabled = data.additionalVariables.isSnappingEnabled;
+    noteId = data.additionalVariables.noteId;
+    customLoad();
+    var videoIndex=0;
+    // wrapper.outerHTML = data.html;
+    const draggableItems = wrapper.querySelectorAll('.draggable');
+    const noteItems = wrapper.querySelectorAll('.textboxContainer');
+
+    var videoElements = [];
+    Array.from(draggableItems).forEach((item) => {
+        console.log(item);
+        item.addEventListener('click', function(event) {
+            selectElement(event);
+        });
+
+        loadedVideo = item.querySelector('video');
+        if(loadedVideo) {
+            videoElements.push(loadedVideo);
+        }
+    })
+    Array.from(data.containersData).forEach((container) => {              
+
+        if(container.type === 'video') {            
+            if(videoElements[videoIndex]) {
+                var video = videoElements[videoIndex++];
+                video.addEventListener('timeupdate', handleProgress);
+                var progressBar = video.parentElement.querySelector('.progress');
+                console.log(progressBar);
+                progressBar.addEventListener("mousemove", handleTimelineUpdate);
+                progressBar.addEventListener("mousedown", toggleScrubbing);
+            }
+        }
+    });
+    noteItems.forEach((textbox) => {
+        createNewNote(textbox);
+    })
+}
+async function loadHtml(data) {
+    return new Promise((resolve, reject) => {
+        // Check if the current content already matches the desired content
+        if(wrapper.innerHTML === data.html) {
+            resolve(0);
+            return;
+        }
+
+        // Set up the mutation observer
+        const observer = new MutationObserver((mutationsList, observer) => {
+            for(let mutation of mutationsList) {
+                // If the addedNodes property has one or more nodes
+                if(mutation.addedNodes.length) {
+                    if(wrapper.innerHTML === data.html) {
+                        observer.disconnect(); // Stop observing
+                        resolve(0);
+                        return;
+                    }
+                }
+            }
+        });
+        
+        // Start observing the target node for configured mutations
+        observer.observe(wrapper, { childList: true });
+
+        // Update the innerHTML
+        wrapper.innerHTML = data.html;
+        
+        // Set a timeout to reject if the innerHTML doesn't change in a reasonable time
+        setTimeout(() => {
+            observer.disconnect(); // Ensure observer doesn't keep running indefinitely
+            reject(new Error('LoadHtml update took too long or failed.'));
+        }, 5000); // Adjust this time as necessary
+    });
 }
 
+ipcRenderer.on('load-project', function() {
+    createUnsavedModal().then(flag => {
+        if (flag !== 2) {
+            callLoad();
+        }
+    }).catch(error => {
+        console.error('Modal was canceled:', error);
+    });
+});
+async function callLoad() {
+    ipcRenderer.send('load-project-data');
 
-//VIDEO PROGRESS BAR: WIDTH TO TIME
-// const scrub = e => {
+}
 
-//     // video.currentTime = video.duration / (e.target.style.flexBasis/100);
-//     const scrubTime = (e.offsetX / progress.offsetWidth) * video.duration;
-//     video.currentTime = scrubTime;
-//   }
+ipcRenderer.on('project-file-data', (event, data) => {
+    loadHtml(data).then(val => {
+        if(val === 0) {
+            loadProject(data);
+        }
+    }).catch(error => {
+        console.error('LoadHtml Was Empty or Null')
+    })
+    
+});
+
+async function createUnsavedModal() {
+    // const modal = document.createElement('div');
+    return new Promise((resolve, reject) => {
+        console.log('inModal')
+        let modal = document.createElement('div');
+        modal.id= "unsaved-modal-container";
+        var flag = 0;
+        // modal.id = 'unsaved-modal';
+        const modalHtml = `
+    <div id="unsaved-modal">
+        <span style="font-size: 34px; font-family: roboto; color: #5e5751; grid-row: 2; grid-column-start: 1; grid-column-end: 6;"> 
+        You have some unsaved changes to the current scene\n would you like to save the current scene before proceeding?</span>
+        <button class='unsaved-modal-button' style="grid-row:3; grid-column:2;"'>Save</button>
+        <button class='unsaved-modal-button' style='grid-row:3; grid-column:3;'>Don't Save</button>
+        <button class='unsaved-modal-button' style='grid-row:3; grid-column:4;'>Cancel</button>
+    </div>
+    `
+        modal.innerHTML = modalHtml;
+        document.body.appendChild(modal);
+        index = 0;
+        Array.from(modal.querySelectorAll('button')).forEach((button) => {
+            button.setAttribute('index', flag++);
+            button.addEventListener('click', () => proceedSwitch(parseFloat(button.getAttribute('index'))));
+        });
+        function proceedSwitch(flag) {
+            if(flag===0) {
+                saveProject();
+            }
+            modal.remove();
+            if (flag !== 2) {
+                resolve(flag);  // Resolve the promise with the flag value
+            } else {
+                reject(new Error('Operation canceled'));  // Or however you'd like to handle the cancel case
+            }
+        }
+    });
+}
